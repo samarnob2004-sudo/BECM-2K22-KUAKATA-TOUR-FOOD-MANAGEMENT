@@ -81,7 +81,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     });
 
     // Append grand total row
-    csv += `\n,,সর্বমোট হিসাব,,,,"${grandTotal}","১২০ জন শিক্ষার্থী - জনপ্রতি ৳${perPerson}"\n`;
+    csv += `\n,,সর্বমোট হিসাব,,,,"${grandTotal}","${studentCount} জন অংশগ্রহণকারী - জনপ্রতি ৳${perPerson}"\n`;
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);

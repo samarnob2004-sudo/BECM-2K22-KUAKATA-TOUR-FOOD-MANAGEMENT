@@ -1,8 +1,25 @@
+@import "https://fonts.maateen.me/kalpurush/font.css";
 @import "tailwindcss";
 
+@font-face {
+  font-family: 'Kalpurush';
+  src: local('Kalpurush'),
+       local('Kalpurush ANSI'),
+       url('https://fonts.maateen.me/kalpurush/Kalpurush-v0.258.woff2') format('woff2'),
+       url('https://fonts.maateen.me/kalpurush/Kalpurush-v0.258.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 @layer base {
-  body {
-    font-family: 'Hind Siliguri', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  html, body {
+    font-family: 'Kalpurush', 'Hind Siliguri', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    letter-spacing: 0.01em;
+  }
+
+  button, input, select, textarea {
+    font-family: inherit;
   }
 }
 
@@ -11,10 +28,27 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Custom subtle scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
 @media print {
   body {
     background-color: #ffffff !important;
     color: #000000 !important;
+    font-family: 'Kalpurush', 'Hind Siliguri', sans-serif !important;
   }
   .no-print {
     display: none !important;

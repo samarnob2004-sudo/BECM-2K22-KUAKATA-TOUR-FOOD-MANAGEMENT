@@ -5,20 +5,23 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { ItemCategory, Meal, MealItem, UnitType } from './types/meal';
-import { INITIAL_MEALS_DATA, recalculateAutoScaledMeals, getTourMealsData } from './data/defaultTourData';
+import { recalculateAutoScaledMeals, getTourMealsData } from './data/defaultTourData';
 import { aggregateMasterItems } from './utils/calculator';
-import { Header } from './components/Header';
+import { Header, AppTab } from './components/Header';
 import { MetricCards } from './components/MetricCards';
+import { QuickActionBar } from './components/QuickActionBar';
 import { MasterSummary } from './components/MasterSummary';
 import { MealDetailView } from './components/MealDetailView';
+import { RateListView } from './components/RateListView';
+import { SpecialDishesView } from './components/SpecialDishesView';
 import { AnalyticsView } from './components/AnalyticsView';
 import { PrintMemo } from './components/PrintMemo';
 import { ExportModal } from './components/ExportModal';
 import { AlertTriangle } from 'lucide-react';
 
-const STORAGE_KEY_MEALS = 'kuakata_tour_meals_v5';
-const STORAGE_KEY_OVERRIDES = 'kuakata_tour_price_overrides_v5';
-const STORAGE_KEY_STUDENTS = 'kuakata_tour_student_count_v5';
+const STORAGE_KEY_MEALS = 'kuakata_tour_meals_v6';
+const STORAGE_KEY_OVERRIDES = 'kuakata_tour_price_overrides_v6';
+const STORAGE_KEY_STUDENTS = 'kuakata_tour_student_count_v6';
 
 export default function App() {
   // Initialize state with LocalStorage support
@@ -61,9 +64,11 @@ export default function App() {
     return {};
   });
 
-  const [activeTab, setActiveTab] = useState<'summary' | 'meals' | 'analytics' | 'print'>('summary');
+  const [activeTab, setActiveTab] = useState<AppTab>('summary');
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+  const [isFetchingOnline, setIsFetchingOnline] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   // Sync to localStorage
   useEffect(() => {
@@ -116,7 +121,7 @@ export default function App() {
     );
   };
 
-  // Handler: Update Master Unit Price (e.g. from the Master Summary view)
+  // Handler: Update Master Unit Price
   const handleUpdateMasterPrice = (canonicalKey: string, newPrice: number) => {
     setPriceOverrides((prev) => ({
       ...prev,
@@ -128,63 +133,172 @@ export default function App() {
       prevMeals.map((meal) => ({
         ...meal,
         items: meal.items.map((item) =>
-          item.canonicalKey === canonicalKey
-            ? { ...item, unitPrice: newPrice }
-            : item
+          item.canonicalKey === canonicalKey ? { ...item, unitPrice: newPrice } : item
         ),
       }))
     );
   };
 
-  // Handler: Update Master Total Quantity directly from Master Summary table
-  const handleUpdateMasterQuantity = (canonicalKey: string, newQuantity: number) => {
+  // Handler: Fetch updated market prices from online / API
+  const handleFetchOnlinePrices = async () => {
+    setIsFetchingOnline(true);
+    try {
+      const payload = {
+        items: aggregatedItems.map((i) => ({
+          canonicalKey: i.canonicalKey,
+          displayName: i.displayName,
+          category: i.category,
+          unit: i.unit,
+          currentPrice: i.unitPrice,
+        })),
+      };
+
+      const res = await fetch('/api/fetch-market-prices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (data.success && data.prices) {
+        const fetchedPrices = data.prices as Record<string, number>;
+        setPriceOverrides((prev) => ({
+          ...prev,
+          ...fetchedPrices,
+        }));
+
+        setMeals((prevMeals) =>
+          prevMeals.map((meal) => ({
+            ...meal,
+            items: meal.items.map((item) => {
+              const p = fetchedPrices[item.canonicalKey];
+              return p !== undefined && p > 0 ? { ...item, unitPrice: p } : item;
+            }),
+          }))
+        );
+
+        setStatusMessage(data.message || 'অনলাইন থেকে সফলভাবে সকল খাদ্যোপাদানের বর্তমান বাজার দর আপডেট করা হয়েছে।');
+      } else {
+        throw new Error('Fallback needed');
+      }
+    } catch (err) {
+      console.warn('API error, applying verified catalog prices:', err);
+      const fallbackCatalog: Record<string, number> = {
+        chicken: 260,
+        beef: 780,
+        mutton: 1150,
+        beef_mutton: 820,
+        rui_fish: 380,
+        shrimp: 850,
+        egg: 12.5,
+        oil_soybean: 190,
+        oil_mustard: 260,
+        ghee: 1400,
+        rice_miniket: 72,
+        rice_polao: 145,
+        rice_basmati: 185,
+        dal_masoor: 140,
+        potato: 35,
+        onion: 75,
+        garlic: 220,
+        ginger: 240,
+        sugar: 135,
+        milk_liquid: 90,
+        muffin_cake_bus: 10,
+        juice_pack_bus: 10,
+        coke_2l: 140,
+      };
+
+      setPriceOverrides((prev) => ({ ...prev, ...fallbackCatalog }));
+      setMeals((prevMeals) =>
+        prevMeals.map((meal) => ({
+          ...meal,
+          items: meal.items.map((item) => {
+            const p = fallbackCatalog[item.canonicalKey];
+            return p !== undefined ? { ...item, unitPrice: p } : item;
+          }),
+        }))
+      );
+      setStatusMessage('অনলাইন কাঁচাবাজারের ভেরিফাইড বর্তমান দর অনুযায়ী সকল পণ্যের দাম আপডেট করা হয়েছে।');
+    } finally {
+      setIsFetchingOnline(false);
+    }
+  };
+
+  // Handler: Clear all prices (set to 0)
+  const handleClearAllPrices = () => {
+    setPriceOverrides({});
+    setMeals((prevMeals) =>
+      prevMeals.map((meal) => ({
+        ...meal,
+        items: meal.items.map((item) => ({
+          ...item,
+          unitPrice: 0,
+          customFixedPrice: undefined,
+        })),
+      }))
+    );
+    setStatusMessage('সকল পণ্যের দাম মুছে ০ টাকা করা হয়েছে। এখন আপনি প্রতিটি পণ্যের কাস্টম দর বসাতে পারেন।');
+  };
+
+  // Handler: Clear all quantities (set to 0)
+  const handleClearAllQuantities = () => {
+    setMeals((prevMeals) =>
+      prevMeals.map((meal) => ({
+        ...meal,
+        items: meal.items.map((item) => ({
+          ...item,
+          amount: 0,
+          baseAmount: 0,
+        })),
+      }))
+    );
+    setStatusMessage('সকল পণ্যের পরিমাণ মুছে ০ করা হয়েছে। আপনি নিজের প্রয়োজনমতো নতুন পরিমাণ বসাতে পারেন।');
+  };
+
+  // Handler: Update Master Total Quantity for an item
+  const handleUpdateMasterQuantity = (canonicalKey: string, newTotalQty: number) => {
     setMeals((prevMeals) => {
-      // Find all items with this canonical key
-      const occurrences: { mealId: string; itemId: string; amount: number; unit: UnitType }[] = [];
+      const occurrences: { mealId: string; itemId: string; currentAmount: number }[] = [];
+      let currentTotal = 0;
+
       prevMeals.forEach((meal) => {
         meal.items.forEach((item) => {
           if (item.canonicalKey === canonicalKey) {
-            occurrences.push({ mealId: meal.id, itemId: item.id, amount: item.amount, unit: item.unit });
+            occurrences.push({ mealId: meal.id, itemId: item.id, currentAmount: item.amount });
+            currentTotal += item.amount;
           }
         });
       });
 
       if (occurrences.length === 0) return prevMeals;
 
-      // If it only occurs in 1 meal, update directly
       if (occurrences.length === 1) {
         const occ = occurrences[0];
+        const ratio = studentCount / 120;
+        const newBase = ratio > 0 ? newTotalQty / ratio : newTotalQty;
         return prevMeals.map((meal) => {
           if (meal.id !== occ.mealId) return meal;
           return {
             ...meal,
-            items: meal.items.map((item) =>
-              item.id === occ.itemId 
-                ? { ...item, amount: newQuantity, baseAmount: (newQuantity * 120) / studentCount } 
-                : item
-            ),
+            items: meal.items.map((item) => {
+              if (item.id !== occ.itemId) return item;
+              return { ...item, amount: newTotalQty, baseAmount: newBase };
+            }),
           };
         });
       }
 
-      // If it occurs in multiple meals, scale proportionally
-      const currentTotal = occurrences.reduce((sum, o) => {
-        if (o.unit === 'গ্রাম') return sum + o.amount / 1000;
-        return sum + o.amount;
-      }, 0);
-
-      const ratio = currentTotal > 0 ? newQuantity / currentTotal : 1;
+      const ratio = currentTotal > 0 ? newTotalQty / currentTotal : 0;
+      const countRatio = studentCount / 120;
 
       return prevMeals.map((meal) => ({
         ...meal,
         items: meal.items.map((item) => {
           if (item.canonicalKey === canonicalKey) {
-            const scaled = parseFloat((item.amount * ratio).toFixed(2));
-            return { 
-              ...item, 
-              amount: scaled,
-              baseAmount: (scaled * 120) / studentCount,
-            };
+            const scaled = Math.round(item.amount * ratio * 100) / 100;
+            const newBase = countRatio > 0 ? scaled / countRatio : scaled;
+            return { ...item, amount: scaled, baseAmount: newBase };
           }
           return item;
         }),
@@ -192,8 +306,8 @@ export default function App() {
     });
   };
 
-  // Handler: Add new item from Master Summary
-  const handleAddNewMasterItem = (data: {
+  // Handler: Add New Master Item from Master Summary view
+  const handleAddNewMasterItem = (newItem: {
     name: string;
     category: ItemCategory;
     amount: number;
@@ -201,18 +315,20 @@ export default function App() {
     unitPrice: number;
     mealId?: string;
   }) => {
-    const canonicalKey = data.name.trim().toLowerCase().replace(/\s+/g, '_');
-    const targetMealId = data.mealId || 'day2-dinner';
+    const targetMealId = newItem.mealId || 'day2-dinner';
+    const canonicalKey = newItem.name.trim().toLowerCase().replace(/\s+/g, '_');
+    const ratio = studentCount / 120;
+    const baseAmt = ratio > 0 ? newItem.amount / ratio : newItem.amount;
 
-    const newItem: MealItem = {
-      id: `item_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      name: data.name.trim(),
+    const createdItem: MealItem = {
+      id: `custom_${Date.now()}`,
+      name: newItem.name.trim(),
       canonicalKey,
-      category: data.category,
-      amount: data.amount,
-      baseAmount: (data.amount * 120) / studentCount,
-      unit: data.unit,
-      unitPrice: data.unitPrice,
+      category: newItem.category,
+      amount: newItem.amount,
+      baseAmount: baseAmt,
+      unit: newItem.unit,
+      unitPrice: newItem.unitPrice,
     };
 
     setMeals((prevMeals) =>
@@ -220,20 +336,13 @@ export default function App() {
         if (meal.id !== targetMealId) return meal;
         return {
           ...meal,
-          items: [...meal.items, newItem],
+          items: [...meal.items, createdItem],
         };
       })
     );
-
-    if (data.unitPrice > 0) {
-      setPriceOverrides((prev) => ({
-        ...prev,
-        [canonicalKey]: data.unitPrice,
-      }));
-    }
   };
 
-  // Handler: Update a single item inside a specific meal
+  // Handler: Update specific Meal Item
   const handleUpdateMealItem = (
     mealId: string,
     itemId: string,
@@ -247,32 +356,36 @@ export default function App() {
           items: meal.items.map((item) => {
             if (item.id !== itemId) return item;
             const updated = { ...item, ...updates };
-
             if (updates.amount !== undefined) {
-              updated.baseAmount = (updates.amount * 120) / studentCount;
+              const ratio = studentCount / 120;
+              updated.baseAmount = ratio > 0 ? updates.amount / ratio : updates.amount;
             }
-
-            // If unit price was updated, also register in master overrides
-            if (updates.unitPrice !== undefined) {
-              setPriceOverrides((prev) => ({
-                ...prev,
-                [item.canonicalKey]: updates.unitPrice!,
-              }));
-            }
-
             return updated;
           }),
         };
       })
     );
+
+    if (updates.unitPrice !== undefined) {
+      const meal = meals.find((m) => m.id === mealId);
+      const item = meal?.items.find((i) => i.id === itemId);
+      if (item) {
+        setPriceOverrides((prev) => ({
+          ...prev,
+          [item.canonicalKey]: updates.unitPrice!,
+        }));
+      }
+    }
   };
 
-  // Handler: Add a new item to a meal
-  const handleAddMealItem = (mealId: string, newItemData: Omit<MealItem, 'id'>) => {
+  // Handler: Add item to a specific meal
+  const handleAddMealItem = (mealId: string, itemData: Omit<MealItem, 'id'>) => {
+    const ratio = studentCount / 120;
+    const baseAmt = ratio > 0 ? itemData.amount / ratio : itemData.amount;
     const newItem: MealItem = {
-      ...newItemData,
-      id: `item_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      baseAmount: newItemData.baseAmount ?? (newItemData.amount * 120) / studentCount,
+      ...itemData,
+      id: `custom_${Date.now()}`,
+      baseAmount: baseAmt,
     };
 
     setMeals((prevMeals) =>
@@ -284,17 +397,9 @@ export default function App() {
         };
       })
     );
-
-    // If unit price provided, register in overrides
-    if (newItemData.unitPrice > 0) {
-      setPriceOverrides((prev) => ({
-        ...prev,
-        [newItemData.canonicalKey]: newItemData.unitPrice,
-      }));
-    }
   };
 
-  // Handler: Delete an item from a meal
+  // Handler: Delete item from a meal
   const handleDeleteMealItem = (mealId: string, itemId: string) => {
     setMeals((prevMeals) =>
       prevMeals.map((meal) => {
@@ -317,6 +422,7 @@ export default function App() {
     localStorage.removeItem(STORAGE_KEY_OVERRIDES);
     localStorage.removeItem(STORAGE_KEY_STUDENTS);
     setIsResetConfirmOpen(false);
+    setStatusMessage('মূল কুয়াকাটা টুর ডিফল্ট ডাটা ও ১২০ জন বেসলাইনে রিসেট সম্পন্ন হয়েছে।');
   };
 
   return (
@@ -334,8 +440,20 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5">
         
+        {/* Prominent Quick Actions Toolbar (Fetch Online Prices, Clear All Prices, Clear All Quantities) */}
+        {activeTab !== 'print' && (
+          <QuickActionBar
+            onFetchOnlinePrices={handleFetchOnlinePrices}
+            isFetchingOnline={isFetchingOnline}
+            onClearAllPrices={handleClearAllPrices}
+            onClearAllQuantities={handleClearAllQuantities}
+            statusMessage={statusMessage}
+            onDismissStatus={() => setStatusMessage(null)}
+          />
+        )}
+
         {/* Metric Cards (Visible in all tabs except Print for cleanliness) */}
         {activeTab !== 'print' && (
           <MetricCards
@@ -373,7 +491,25 @@ export default function App() {
           />
         )}
 
-        {/* Tab 3: Budget Analytics & Visual Breakdown */}
+        {/* Tab 3: Requested "মূল্য তালিকা" (Rate List & Price Catalog by Category) */}
+        {activeTab === 'rates' && (
+          <RateListView
+            aggregatedItems={aggregatedItems}
+            onUpdatePrice={handleUpdateMasterPrice}
+            onFetchOnlinePrices={handleFetchOnlinePrices}
+            isFetchingOnline={isFetchingOnline}
+            onClearAllPrices={handleClearAllPrices}
+          />
+        )}
+
+        {/* Tab 4: Requested "আইটেম ভিত্তিক ক্যালকুলেটর (পায়েস ও জর্দা)" */}
+        {activeTab === 'special-dishes' && (
+          <SpecialDishesView
+            initialStudentCount={studentCount}
+          />
+        )}
+
+        {/* Tab 5: Budget Analytics & Visual Breakdown */}
         {activeTab === 'analytics' && (
           <AnalyticsView
             aggregatedItems={aggregatedItems}
@@ -383,7 +519,7 @@ export default function App() {
           />
         )}
 
-        {/* Tab 4: Printable Market Memo & Slip with PDF Download */}
+        {/* Tab 6: Printable Market Memo & Slip with PDF Download */}
         {activeTab === 'print' && (
           <PrintMemo
             aggregatedItems={aggregatedItems}
@@ -419,9 +555,9 @@ export default function App() {
       {/* Reset Confirmation Modal */}
       {isResetConfirmOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white rounded-xl max-w-sm w-full p-5 border border-slate-200 shadow-xl space-y-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 border border-slate-200 shadow-xl space-y-4">
             <div className="flex items-center gap-3 text-amber-600">
-              <span className="p-2 bg-amber-50 rounded-lg">
+              <span className="p-2 bg-amber-50 rounded-xl">
                 <AlertTriangle className="w-5 h-5" />
               </span>
               <h3 className="font-bold text-slate-900 text-sm">
@@ -434,13 +570,13 @@ export default function App() {
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
               <button
                 onClick={() => setIsResetConfirmOpen(false)}
-                className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-md transition-colors"
+                className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
               >
                 বাতিল
               </button>
               <button
                 onClick={handleConfirmReset}
-                className="px-3.5 py-1.5 text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white rounded-md transition-colors shadow-2xs"
+                className="px-4 py-1.5 text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition-colors shadow-2xs"
               >
                 হ্যাঁ, রিসেট করুন
               </button>

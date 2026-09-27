@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { CATEGORIES, ItemCategory, Meal, MealItem, UnitType } from '../types/meal';
 import { calculateItemCost, formatCurrency } from '../utils/calculator';
-import { Plus, Trash2, Calendar, Clock, UtensilsCrossed, Edit2, Check, X, Info } from 'lucide-react';
+import { Plus, Trash2, Calendar, Clock, UtensilsCrossed, Edit2, Check, X, Sparkles, Users } from 'lucide-react';
 
 interface MealDetailViewProps {
   meals: Meal[];
@@ -78,10 +78,10 @@ export const MealDetailView: React.FC<MealDetailViewProps> = ({
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       
       {/* 7 Time-Slot Selector Tabs (Bus Snacks + 6 Meals) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
         {meals.map((meal, index) => {
           const isSelected = meal.id === activeMealId;
           const mealCost = meal.items.reduce((sum, i) => sum + calculateItemCost(i), 0);
@@ -94,27 +94,29 @@ export const MealDetailView: React.FC<MealDetailViewProps> = ({
                 setIsAddingItem(false);
                 setIsEditingMenuSummary(false);
               }}
-              className={`p-2.5 rounded-xl text-left border transition-all relative ${
+              className={`p-3 rounded-xl text-left border transition-all relative flex flex-col justify-between ${
                 isSelected
-                  ? 'bg-emerald-800 text-white border-emerald-900 shadow-sm'
-                  : 'bg-white text-slate-800 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                  ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
+                  : 'bg-white text-slate-800 border-slate-200/90 hover:border-slate-300 hover:bg-slate-50'
               }`}
             >
-              <div className="flex items-center justify-between text-2xs mb-1">
-                <span className={`font-semibold ${isSelected ? 'text-emerald-200' : 'text-slate-400'}`}>
-                  {meal.timeSlot === 'যাত্রা' ? 'শুরুতে' : `বেলা ০${index}`}
-                </span>
-                <span className={`px-1.5 py-0.5 rounded text-3xs font-medium ${
-                  isSelected ? 'bg-emerald-900/80 text-emerald-100' : 'bg-slate-100 text-slate-600'
-                }`}>
-                  {meal.timeSlot}
-                </span>
+              <div>
+                <div className="flex items-center justify-between text-2xs mb-1">
+                  <span className={`font-semibold ${isSelected ? 'text-emerald-400' : 'text-slate-400'}`}>
+                    {meal.timeSlot === 'যাত্রা' ? 'শুরুতে' : `বেলা ০${index}`}
+                  </span>
+                  <span className={`px-1.5 py-0.5 rounded text-3xs font-semibold ${
+                    isSelected ? 'bg-slate-800 text-slate-200' : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {meal.timeSlot}
+                  </span>
+                </div>
+                <div className="font-bold text-xs leading-snug line-clamp-1">
+                  {meal.title}
+                </div>
               </div>
-              <div className="font-bold text-xs leading-snug truncate">
-                {meal.title}
-              </div>
-              <div className={`text-xs font-mono font-semibold mt-1.5 tabular-nums ${
-                isSelected ? 'text-emerald-100' : 'text-emerald-700'
+              <div className={`text-xs font-mono font-bold mt-2 tabular-nums ${
+                isSelected ? 'text-emerald-400' : 'text-emerald-700'
               }`}>
                 ৳ {formatCurrency(mealCost)}
               </div>
@@ -124,25 +126,25 @@ export const MealDetailView: React.FC<MealDetailViewProps> = ({
       </div>
 
       {/* Current Meal Details Box */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
         
         {/* Meal Header */}
-        <div className="p-4 sm:p-5 border-b border-slate-200 bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="p-5 border-b border-slate-200/80 bg-slate-50/70 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
-              <span className="flex items-center gap-1 font-medium text-emerald-800">
+            <div className="flex items-center gap-2 text-2xs text-slate-500 mb-1.5">
+              <span className="flex items-center gap-1 font-semibold text-emerald-800">
                 <Calendar className="w-3.5 h-3.5" />
                 {mealLabel(currentMeal.day, currentMeal.timeSlot)}
               </span>
-              <span aria-hidden="true">·</span>
+              <span aria-hidden="true" className="text-slate-300">·</span>
               <span className="flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5" />
                 {currentMeal.timeSlot}
               </span>
-              <span aria-hidden="true">·</span>
+              <span aria-hidden="true" className="text-slate-300">·</span>
               <span>মোট {currentMeal.items.length} টি উপাদান</span>
             </div>
-            <h2 className="text-xl font-bold text-slate-900">
+            <h2 className="text-xl font-bold text-slate-900 tracking-tight">
               {currentMeal.title}
             </h2>
             <p className="text-xs text-slate-600 mt-0.5">
@@ -152,8 +154,9 @@ export const MealDetailView: React.FC<MealDetailViewProps> = ({
 
           <div className="flex items-center gap-3 self-end sm:self-auto flex-wrap">
             {setStudentCount && (
-              <div className="flex items-center gap-1 bg-white px-2 py-1 rounded-lg border border-slate-200 text-xs shadow-2xs">
-                <span className="text-slate-600 font-medium">মেম্বার:</span>
+              <div className="flex items-center gap-1 bg-white px-2.5 py-1 rounded-lg border border-slate-200 text-xs shadow-2xs">
+                <Users className="w-3.5 h-3.5 text-emerald-700" />
+                <span className="text-slate-500 font-medium text-2xs">মেম্বার:</span>
                 <button
                   type="button"
                   onClick={() => setStudentCount(Math.max(1, studentCount - 5))}
@@ -162,7 +165,7 @@ export const MealDetailView: React.FC<MealDetailViewProps> = ({
                 >
                   -
                 </button>
-                <span className="font-mono font-bold text-emerald-900 px-1">{studentCount} জন</span>
+                <span className="font-mono font-bold text-slate-900 px-1">{studentCount} জন</span>
                 <button
                   type="button"
                   onClick={() => setStudentCount(Math.min(500, studentCount + 5))}
@@ -174,29 +177,29 @@ export const MealDetailView: React.FC<MealDetailViewProps> = ({
               </div>
             )}
 
-            <div className="text-right">
-              <div className="text-2xs text-slate-500 font-medium">এই বেলার সর্বমোট খরচ</div>
-              <div className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-emerald-800">
+            <div className="text-right bg-white px-3.5 py-1.5 rounded-lg border border-slate-200/90 shadow-2xs">
+              <div className="text-3xs text-slate-400 font-medium uppercase tracking-wider">এই বেলার খরচ</div>
+              <div className="text-xl font-bold font-mono tabular-nums text-emerald-800">
                 ৳ {formatCurrency(currentMealTotal)}
               </div>
             </div>
 
             <button
               onClick={() => setIsAddingItem(!isAddingItem)}
-              className="px-3 py-2 text-xs font-medium bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg transition-colors flex items-center gap-1.5 shadow-2xs"
+              className="px-3.5 py-2 text-xs font-semibold bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg transition-colors flex items-center gap-1.5 shadow-2xs"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>উপাদান যোগ করুন</span>
+              <span>উপাদান যোগ</span>
             </button>
           </div>
         </div>
 
         {/* Editable Menu Food Summary Card */}
-        <div className="px-5 py-3 bg-amber-50/60 border-b border-amber-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+        <div className="px-5 py-3.5 bg-amber-50/70 border-b border-amber-200/70 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
           <div className="flex items-start sm:items-center gap-2 flex-1">
             <UtensilsCrossed className="w-4 h-4 text-amber-700 shrink-0 mt-0.5 sm:mt-0" />
             <div className="text-xs">
-              <span className="font-bold text-amber-950">খাবারের মেনু: </span>
+              <span className="font-bold text-amber-950">মেনু তালিকা: </span>
               {isEditingMenuSummary ? (
                 <div className="inline-flex items-center gap-1.5 mt-1 sm:mt-0">
                   <input
@@ -207,27 +210,27 @@ export const MealDetailView: React.FC<MealDetailViewProps> = ({
                       if (e.key === 'Enter') saveEditSummary();
                       if (e.key === 'Escape') setIsEditingMenuSummary(false);
                     }}
-                    className="px-2 py-0.5 text-xs bg-white border border-amber-400 rounded focus:outline-none focus:ring-1 focus:ring-amber-600 w-80 max-w-full font-medium text-slate-900"
+                    className="px-2.5 py-1 text-xs bg-white border border-amber-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-600 w-80 max-w-full font-medium text-slate-900 shadow-2xs"
                     placeholder="মেনু আইটেমসমূহ লিখুন..."
                     autoFocus
                   />
                   <button
                     onClick={saveEditSummary}
-                    className="p-1 bg-amber-700 text-white rounded hover:bg-amber-800"
+                    className="p-1 bg-amber-700 text-white rounded-md hover:bg-amber-800 shadow-2xs"
                     title="সংরক্ষণ"
                   >
-                    <Check className="w-3 h-3" />
+                    <Check className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={() => setIsEditingMenuSummary(false)}
-                    className="p-1 text-slate-500 hover:bg-amber-200 rounded"
+                    className="p-1 text-slate-500 hover:bg-amber-200 rounded-md"
                     title="বাতিল"
                   >
-                    <X className="w-3 h-3" />
+                    <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
               ) : (
-                <span className="text-amber-900 font-semibold bg-white/70 px-2 py-0.5 rounded border border-amber-200/70 inline-block">
+                <span className="text-amber-900 font-semibold bg-white/80 px-2.5 py-0.5 rounded-md border border-amber-200 inline-block shadow-2xs">
                   {currentMeal.menuSummary || currentMeal.description}
                 </span>
               )}
@@ -237,39 +240,40 @@ export const MealDetailView: React.FC<MealDetailViewProps> = ({
           {!isEditingMenuSummary && (
             <button
               onClick={startEditSummary}
-              className="text-2xs font-semibold text-amber-800 hover:text-amber-950 flex items-center gap-1 px-2 py-1 rounded hover:bg-amber-100 transition-colors shrink-0"
+              className="text-2xs font-semibold text-amber-800 hover:text-amber-950 flex items-center gap-1 px-2.5 py-1 rounded-md hover:bg-amber-100 transition-colors shrink-0"
             >
               <Edit2 className="w-3 h-3" />
-              <span>মেনু টেক্সট এডিট করুন</span>
+              <span>মেনু টেক্সট এডিট</span>
             </button>
           )}
         </div>
 
         {/* Add Item Form (Expandable) */}
         {isAddingItem && (
-          <form onSubmit={handleAddNewItem} className="p-4 bg-emerald-50/70 border-b border-emerald-200">
-            <div className="text-xs font-semibold text-emerald-900 mb-3">
-              নতুন উপাদান যোগ করুন ({currentMeal.title})
+          <form onSubmit={handleAddNewItem} className="p-5 bg-emerald-50/60 border-b border-emerald-200">
+            <div className="text-xs font-bold text-emerald-950 mb-3 flex items-center gap-1.5">
+              <Plus className="w-4 h-4 text-emerald-700" />
+              <span>নতুন উপাদান যোগ করুন ({currentMeal.title})</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
               <div className="lg:col-span-2">
-                <label className="block text-2xs font-medium text-slate-600 mb-1">উপাদানের নাম *</label>
+                <label className="block text-2xs font-semibold text-slate-600 mb-1">উপাদানের নাম *</label>
                 <input
                   type="text"
                   required
                   placeholder="যেমন: পোলাও চাল, খাসির মাংস..."
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  className="w-full text-xs px-2.5 py-1.5 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-600"
+                  className="w-full text-xs px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-600"
                 />
               </div>
 
               <div>
-                <label className="block text-2xs font-medium text-slate-600 mb-1">ক্যাটাগরি</label>
+                <label className="block text-2xs font-semibold text-slate-600 mb-1">ক্যাটাগরি</label>
                 <select
                   value={newCategory}
                   onChange={(e) => setNewCategory(e.target.value as ItemCategory)}
-                  className="w-full text-xs px-2.5 py-1.5 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-600"
+                  className="w-full text-xs px-2 py-1.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-600 text-slate-800"
                 >
                   {(Object.keys(CATEGORIES) as ItemCategory[]).map((catKey) => (
                     <option key={catKey} value={catKey}>
@@ -280,37 +284,35 @@ export const MealDetailView: React.FC<MealDetailViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-2xs font-medium text-slate-600 mb-1">পরিমাণ</label>
-                <input
-                  type="number"
-                  step="any"
-                  min="0.01"
-                  required
-                  value={newAmount}
-                  onChange={(e) => setNewAmount(parseFloat(e.target.value) || 0)}
-                  className="w-full text-xs px-2.5 py-1.5 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-600"
-                />
+                <label className="block text-2xs font-semibold text-slate-600 mb-1">পরিমাণ ও ইউনিট</label>
+                <div className="flex gap-1">
+                  <input
+                    type="number"
+                    step="any"
+                    min="0.01"
+                    required
+                    value={newAmount}
+                    onChange={(e) => setNewAmount(parseFloat(e.target.value) || 0)}
+                    className="w-20 text-xs px-2 py-1.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-600 font-mono font-bold text-right"
+                  />
+                  <select
+                    value={newUnit}
+                    onChange={(e) => setNewUnit(e.target.value as UnitType)}
+                    className="flex-1 text-xs px-1.5 py-1.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-600 text-slate-800"
+                  >
+                    <option value="কেজি">কেজি</option>
+                    <option value="গ্রাম">গ্রাম</option>
+                    <option value="লিটার">লিটার</option>
+                    <option value="পিস">পিস</option>
+                    <option value="প্যাকেট">প্যাকেট</option>
+                    <option value="তোলা">তোলা</option>
+                    <option value="টাকা">টাকা</option>
+                  </select>
+                </div>
               </div>
 
               <div>
-                <label className="block text-2xs font-medium text-slate-600 mb-1">একক</label>
-                <select
-                  value={newUnit}
-                  onChange={(e) => setNewUnit(e.target.value as UnitType)}
-                  className="w-full text-xs px-2.5 py-1.5 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-600"
-                >
-                  <option value="কেজি">কেজি</option>
-                  <option value="গ্রাম">গ্রাম</option>
-                  <option value="লিটার">লিটার</option>
-                  <option value="পিস">পিস</option>
-                  <option value="প্যাকেট">প্যাকেট</option>
-                  <option value="তোলা">তোলা</option>
-                  <option value="টাকা">টাকা</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-2xs font-medium text-slate-600 mb-1">একক দর (৳)</label>
+                <label className="block text-2xs font-semibold text-slate-600 mb-1">একক দর (৳)</label>
                 <input
                   type="number"
                   step="any"
@@ -318,35 +320,36 @@ export const MealDetailView: React.FC<MealDetailViewProps> = ({
                   required
                   value={newUnitPrice}
                   onChange={(e) => setNewUnitPrice(parseFloat(e.target.value) || 0)}
-                  className="w-full text-xs px-2.5 py-1.5 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-600"
+                  className="w-full text-xs px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-600 font-mono text-right"
+                />
+              </div>
+
+              <div>
+                <label className="block text-2xs font-semibold text-slate-600 mb-1">বিশেষ নোট</label>
+                <input
+                  type="text"
+                  placeholder="যেমন: জনপ্রতি ৩ পিস"
+                  value={newNote}
+                  onChange={(e) => setNewNote(e.target.value)}
+                  className="w-full text-xs px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-600"
                 />
               </div>
             </div>
 
-            <div className="mt-3 flex items-center justify-between">
-              <input
-                type="text"
-                placeholder="বিশেষ নোট (ঐচ্ছিক, যেমন: জনপ্রতি ৩ পিস)"
-                value={newNote}
-                onChange={(e) => setNewNote(e.target.value)}
-                className="w-72 text-xs px-2.5 py-1.5 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-600"
-              />
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsAddingItem(false)}
-                  className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-200 rounded-md"
-                >
-                  বাতিল
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-1.5 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-medium rounded-md shadow-2xs"
-                >
-                  সংরক্ষণ করুন
-                </button>
-              </div>
+            <div className="mt-3.5 flex items-center justify-end gap-2 pt-2 border-t border-emerald-200/60">
+              <button
+                type="button"
+                onClick={() => setIsAddingItem(false)}
+                className="px-3.5 py-1.5 text-xs text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
+              >
+                বাতিল
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-1.5 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold rounded-lg shadow-2xs transition-colors"
+              >
+                সংরক্ষণ করুন
+              </button>
             </div>
           </form>
         )}
@@ -374,7 +377,7 @@ export const MealDetailView: React.FC<MealDetailViewProps> = ({
                 };
 
                 return (
-                  <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                  <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
                     {/* Index */}
                     <td className="py-2.5 px-3.5 text-center text-xs font-mono text-slate-400">
                       {index + 1}
@@ -387,14 +390,15 @@ export const MealDetailView: React.FC<MealDetailViewProps> = ({
                           type="text"
                           value={item.name}
                           onChange={(e) => onUpdateMealItem(currentMeal.id, item.id, { name: e.target.value })}
-                          className="font-medium text-slate-900 bg-transparent hover:bg-slate-100 focus:bg-white px-1.5 py-0.5 rounded border border-transparent focus:border-slate-300 focus:outline-none text-sm w-full"
+                          className="font-semibold text-slate-900 bg-transparent hover:bg-slate-100 focus:bg-white px-2 py-0.5 rounded border border-transparent focus:border-slate-300 focus:outline-none text-sm w-full"
                         />
                         {item.isAutoScaled && (
                           <span 
                             title={`জনসংখ্যা পরিবর্তন হলে এই উপাদানের পরিমাণ স্বয়ংক্রিয়ভাবে হিসাব হয়`}
-                            className="inline-flex items-center text-3xs font-semibold px-1.5 py-0.5 bg-emerald-100 text-emerald-800 rounded shrink-0"
+                            className="inline-flex items-center text-3xs font-semibold px-1.5 py-0.5 bg-emerald-50 text-emerald-800 rounded border border-emerald-200 shrink-0"
                           >
-                            অটো-হিসাব
+                            <Sparkles className="w-2.5 h-2.5 mr-0.5" />
+                            অটো
                           </span>
                         )}
                       </div>
@@ -403,11 +407,11 @@ export const MealDetailView: React.FC<MealDetailViewProps> = ({
                     {/* Category & Note */}
                     <td className="py-2.5 px-4 text-xs text-slate-500">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-2xs text-slate-600">{cat.nameBn}</span>
+                        <span className="text-2xs text-slate-600 font-medium">{cat.nameBn}</span>
                         {item.note && (
                           <>
-                            <span aria-hidden="true">·</span>
-                            <span className="text-emerald-700 font-medium italic">{item.note}</span>
+                            <span aria-hidden="true" className="text-slate-300">·</span>
+                            <span className="text-emerald-700 font-medium">{item.note}</span>
                           </>
                         )}
                       </div>
@@ -430,7 +434,7 @@ export const MealDetailView: React.FC<MealDetailViewProps> = ({
                         <select
                           value={item.unit}
                           onChange={(e) => onUpdateMealItem(currentMeal.id, item.id, { unit: e.target.value as UnitType })}
-                          className="text-xs bg-slate-50 border border-slate-200 rounded px-1 py-0.5 focus:bg-white focus:outline-none text-slate-700"
+                          className="text-xs bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 focus:bg-white focus:outline-none text-slate-700 font-medium"
                         >
                           <option value="কেজি">কেজি</option>
                           <option value="গ্রাম">গ্রাম</option>
@@ -449,36 +453,32 @@ export const MealDetailView: React.FC<MealDetailViewProps> = ({
                         <span className="text-xs text-slate-400">৳</span>
                         <input
                           type="number"
-                          step="any"
                           min="0"
-                          value={item.customFixedPrice ? item.customFixedPrice : item.unitPrice}
+                          step="any"
+                          value={item.unitPrice === 0 ? '' : item.unitPrice}
+                          placeholder="দর"
                           onChange={(e) => {
                             const val = parseFloat(e.target.value);
-                            if (item.customFixedPrice) {
-                              onUpdateMealItem(currentMeal.id, item.id, { customFixedPrice: isNaN(val) ? 0 : val });
-                            } else {
-                              onUpdateMealItem(currentMeal.id, item.id, { unitPrice: isNaN(val) ? 0 : val });
-                            }
+                            onUpdateMealItem(currentMeal.id, item.id, { unitPrice: isNaN(val) ? 0 : val });
                           }}
                           className="w-20 text-right px-2 py-0.5 text-sm font-mono font-medium bg-slate-50 border border-slate-200 rounded focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
                         />
                       </div>
-                      <div className="text-3xs text-slate-400 text-right mt-0.5">
-                        {item.unit === 'গ্রাম' ? 'কেজি দর' : `প্রতি ${item.unit}`}
+                    </td>
+
+                    {/* Subtotal Cost */}
+                    <td className="py-2.5 px-4 text-right">
+                      <div className="font-mono tabular-nums font-bold text-slate-900 text-sm sm:text-base">
+                        ৳ {formatCurrency(itemCost)}
                       </div>
                     </td>
 
-                    {/* Total Cost */}
-                    <td className="py-2.5 px-4 text-right font-mono tabular-nums font-bold text-slate-900">
-                      ৳ {formatCurrency(itemCost)}
-                    </td>
-
-                    {/* Delete button */}
+                    {/* Action (Delete) */}
                     <td className="py-2.5 px-3 text-center">
                       <button
                         onClick={() => onDeleteMealItem(currentMeal.id, item.id)}
-                        title="উপাদান মুছে ফেলুন"
-                        className="p-1 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
+                        title="উপাদানটি মুছে ফেলুন"
+                        className="p-1 text-slate-400 hover:text-rose-600 rounded hover:bg-rose-50 transition-colors"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -490,7 +490,7 @@ export const MealDetailView: React.FC<MealDetailViewProps> = ({
 
             {/* Subtotal Footer */}
             <tfoot>
-              <tr className="bg-slate-100 text-slate-900 font-semibold border-t border-slate-300">
+              <tr className="bg-slate-50 text-slate-900 font-semibold border-t-2 border-slate-200">
                 <td colSpan={3} className="py-3 px-4 font-bold text-sm">
                   {currentMeal.title} - সাবটোটাল ({currentMeal.items.length} টি উপাদান)
                 </td>

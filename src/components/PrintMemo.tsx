@@ -93,6 +93,7 @@ export const PrintMemo: React.FC<PrintMemoProps> = ({
       <div 
         ref={memoContentRef} 
         id="tour-memo-printable"
+        style={{ fontFamily: "'Kalpurush', 'Hind Siliguri', sans-serif" }}
         className="bg-white p-6 sm:p-10 rounded-xl border border-slate-200 shadow-sm max-w-4xl mx-auto print:border-none print:shadow-none print:p-0"
       >
         

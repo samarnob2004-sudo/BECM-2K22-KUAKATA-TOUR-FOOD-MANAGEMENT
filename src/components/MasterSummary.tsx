@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { AggregatedMasterItem, CATEGORIES, ItemCategory, UnitType } from '../types/meal';
 import { formatCurrency, formatNumberBn } from '../utils/calculator';
-import { Search, ArrowUpDown, Plus, Edit2, Check, X, Layers } from 'lucide-react';
+import { Search, ArrowUpDown, Plus, Edit2, Check, X, Layers, Users } from 'lucide-react';
 
 interface MasterSummaryProps {
   aggregatedItems: AggregatedMasterItem[];
@@ -126,61 +126,66 @@ export const MasterSummary: React.FC<MasterSummaryProps> = ({
   return (
     <div className="space-y-4">
       
-      {/* Top Banner and Description */}
-      <div className="bg-emerald-800 text-white rounded-xl p-5 shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <span className="text-emerald-200 text-xs font-semibold tracking-wide uppercase">
-              কুয়াকাটা টুর ২০২৬ · বিইসিএম ২২ ব্যাচ
-            </span>
-            <h1 className="text-xl sm:text-2xl font-bold mt-1 text-white">
+      {/* Top Banner and Summary Header */}
+      <div className="bg-slate-900 text-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-800">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-2xs text-emerald-400 font-semibold tracking-wider uppercase">
+              <span>কুয়াকাটা টুর ২০২৬</span>
+              <span aria-hidden="true" className="text-slate-600">·</span>
+              <span>বিইসিএম ২২ ব্যাচ (কুয়েট)</span>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
               ৬ বেলার খাবারের একীভূত বাজার তালিকা ও প্রাক্কলন
             </h1>
-            <p className="text-emerald-100/90 text-sm mt-1 max-w-3xl">
-              সদস্য সংখ্যা বাড়ানো বা কমানো হলে প্রারম্ভিক ১২০ জনের অনুপাতে তালিকার <strong>প্রতিটি কাঁচাবাজারের পরিমাণ</strong> (চাল, ডাল, তেল, সবজি, মাছ, মাংস ও মশলাপাতি) স্বয়ংক্রিয়ভাবে পরিবর্তিত হয়।
+            <p className="text-slate-300 text-xs sm:text-sm leading-relaxed max-w-3xl">
+              সদস্য সংখ্যা অনুযায়ী সমস্ত খাদ্যোপাদান ও কাঁচাবাজারের পরিমাণ (চাল, ডাল, তেল, সবজি, মাছ, মাংস ও মশলাপাতি) মূল অনুপাতের ভিত্তিতে স্বয়ংক্রিয়ভাবে পরিবর্তিত হয়।
             </p>
 
             {setStudentCount && (
-              <div className="mt-3 inline-flex items-center gap-2 bg-emerald-900/80 border border-emerald-700/80 px-3 py-1.5 rounded-lg text-xs">
-                <span className="text-emerald-200 font-medium">টুর মেম্বার পরিবর্তন:</span>
-                <button
-                  type="button"
-                  onClick={() => setStudentCount(Math.max(1, studentCount - 5))}
-                  title="৫ জন কমান"
-                  className="w-5 h-5 flex items-center justify-center rounded bg-emerald-800 hover:bg-emerald-700 text-white font-bold transition-colors"
-                >
-                  -
-                </button>
-                <span className="font-mono font-bold text-white px-1">{studentCount} জন</span>
-                <button
-                  type="button"
-                  onClick={() => setStudentCount(Math.min(500, studentCount + 5))}
-                  title="৫ জন বাড়ান"
-                  className="w-5 h-5 flex items-center justify-center rounded bg-emerald-800 hover:bg-emerald-700 text-white font-bold transition-colors"
-                >
-                  +
-                </button>
-                <span className="text-emerald-300 text-2xs ml-1 border-l border-emerald-700/80 pl-2">
-                  অনুপাত: {(studentCount / 120).toFixed(2)}x (১২০ জন বেসলাইন)
-                </span>
+              <div className="pt-1 flex items-center gap-2.5 flex-wrap">
+                <div className="inline-flex items-center gap-2 bg-slate-800/90 border border-slate-700/80 px-3 py-1.5 rounded-lg text-xs">
+                  <Users className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-slate-300 font-medium">সদস্য সংখ্যা:</span>
+                  <button
+                    type="button"
+                    onClick={() => setStudentCount(Math.max(1, studentCount - 5))}
+                    title="৫ জন কমান"
+                    className="w-5 h-5 flex items-center justify-center rounded bg-slate-700 hover:bg-slate-600 text-white font-bold transition-colors"
+                  >
+                    -
+                  </button>
+                  <span className="font-mono font-bold text-white px-1">{studentCount} জন</span>
+                  <button
+                    type="button"
+                    onClick={() => setStudentCount(Math.min(500, studentCount + 5))}
+                    title="৫ জন বাড়ান"
+                    className="w-5 h-5 flex items-center justify-center rounded bg-slate-700 hover:bg-slate-600 text-white font-bold transition-colors"
+                  >
+                    +
+                  </button>
+                  <span className="text-emerald-400 text-2xs ml-1 border-l border-slate-700 pl-2 font-mono">
+                    {(studentCount / 120).toFixed(2)}x স্কেল
+                  </span>
+                </div>
               </div>
             )}
           </div>
 
-          <div className="flex flex-col items-end gap-2 shrink-0">
-            <div className="bg-emerald-900/60 border border-emerald-700/60 rounded-lg p-3 text-right">
-              <div className="text-xs text-emerald-200 font-medium">সর্বমোট বাজার বাজেট</div>
-              <div className="text-2xl sm:text-3xl font-bold font-mono tabular-nums text-white mt-0.5">
+          <div className="flex flex-row lg:flex-col items-center lg:items-end justify-between gap-3 shrink-0 pt-3 lg:pt-0 border-t border-slate-800 lg:border-t-0">
+            <div className="bg-slate-800/80 border border-slate-700/80 rounded-xl p-3.5 text-left lg:text-right min-w-[180px]">
+              <div className="text-2xs text-slate-400 font-medium">সর্বমোট বাজার বাজেট</div>
+              <div className="text-2xl sm:text-3xl font-bold font-mono tabular-nums text-emerald-400 mt-0.5">
                 ৳ {formatCurrency(grandTotal)}
               </div>
-              <div className="text-2xs text-emerald-300 mt-0.5">
-                জনপ্রতি: ৳ {formatCurrency(studentCount > 0 ? Math.round(grandTotal / studentCount) : 0)}
+              <div className="text-2xs text-slate-300 mt-1">
+                জনপ্রতি খরচ: <strong className="text-white font-mono">৳ {formatCurrency(studentCount > 0 ? Math.round(grandTotal / studentCount) : 0)}</strong>
               </div>
             </div>
 
             <button
               onClick={() => setIsAddingNewItem(!isAddingNewItem)}
-              className="px-3.5 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors flex items-center gap-1.5 shadow-sm self-end"
+              className="px-4 py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl transition-all flex items-center gap-1.5 shadow-xs"
             >
               <Plus className="w-4 h-4" />
               <span>নতুন উপাদান যোগ করুন</span>
@@ -191,22 +196,22 @@ export const MasterSummary: React.FC<MasterSummaryProps> = ({
 
       {/* Add New Item Panel */}
       {isAddingNewItem && (
-        <form onSubmit={handleCreateNewItem} className="bg-white p-4 sm:p-5 rounded-xl border-2 border-emerald-600 shadow-md">
+        <form onSubmit={handleCreateNewItem} className="bg-white p-5 rounded-2xl border border-emerald-500 shadow-sm transition-all">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
-            <div className="flex items-center gap-2 text-emerald-900 font-bold text-sm">
+            <div className="flex items-center gap-2 text-slate-900 font-bold text-sm">
               <Plus className="w-4 h-4 text-emerald-600" />
-              <span>বাজার তালিকায় নতুন উপাদান যোগ করুন</span>
+              <span>বাজার তালিকায় নতুন উপাদান যুক্ত করুন</span>
             </div>
             <button
               type="button"
               onClick={() => setIsAddingNewItem(false)}
-              className="text-slate-400 hover:text-slate-600 p-1"
+              className="text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-slate-100 transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
             <div className="lg:col-span-2">
               <label className="block text-2xs font-semibold text-slate-700 mb-1">উপাদানের নাম *</label>
               <input
@@ -280,14 +285,14 @@ export const MasterSummary: React.FC<MasterSummaryProps> = ({
             </div>
           </div>
 
-          <div className="mt-3 pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-2">
+          <div className="mt-4 pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-xs text-slate-600">
               <Layers className="w-3.5 h-3.5 text-slate-400" />
               <span>কোন বেলার মেনুর সাথে যুক্ত হবে:</span>
               <select
                 value={selectedMealDestination}
                 onChange={(e) => setSelectedMealDestination(e.target.value)}
-                className="text-xs bg-slate-100 border border-slate-300 rounded px-2 py-1 text-slate-800 font-medium"
+                className="text-xs bg-slate-100 border border-slate-300 rounded px-2.5 py-1 text-slate-800 font-medium"
               >
                 <option value="day1-breakfast">১ম দিন সকাল</option>
                 <option value="day1-lunch">১ম দিন দুপুর ও পায়েস</option>
@@ -308,7 +313,7 @@ export const MasterSummary: React.FC<MasterSummaryProps> = ({
               </button>
               <button
                 type="submit"
-                className="px-4 py-1.5 text-xs font-semibold bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg shadow-sm transition-colors"
+                className="px-4 py-1.5 text-xs font-semibold bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg shadow-2xs transition-colors"
               >
                 তালিকাভুক্ত করুন
               </button>
@@ -318,7 +323,7 @@ export const MasterSummary: React.FC<MasterSummaryProps> = ({
       )}
 
       {/* Filter and Search Bar */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-3">
+      <div className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-2xs space-y-3">
         <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
           
           {/* Search Box */}
@@ -329,23 +334,31 @@ export const MasterSummary: React.FC<MasterSummaryProps> = ({
               placeholder="উপাদানের নাম দিয়ে খুঁজুন (যেমন: তেল, চাল, মাংস)..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:bg-white text-slate-900"
+              className="w-full pl-9 pr-4 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:bg-white text-slate-900"
             />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
 
           {/* Quick Counter Info */}
-          <div className="text-xs text-slate-500 flex items-center gap-2 self-start sm:self-auto">
-            <span>প্রদর্শিত উপাদান: <strong className="text-slate-800 font-mono">{sortedItems.length}</strong> / {aggregatedItems.length}</span>
-            <span aria-hidden="true">·</span>
-            <span className="text-emerald-700 font-medium">পরিমাণে বা দরে ক্লিক করে এডিট করুন</span>
+          <div className="text-2xs sm:text-xs text-slate-500 flex items-center gap-2 self-start sm:self-auto">
+            <span>প্রদর্শিত উপাদান: <strong className="text-slate-900 font-mono">{sortedItems.length}</strong> / {aggregatedItems.length}</span>
+            <span aria-hidden="true" className="text-slate-300">·</span>
+            <span className="text-emerald-700 font-medium">পরিমাণ বা দরে ক্লিক করে সরাসরি এডিট করা যায়</span>
           </div>
         </div>
 
-        {/* Category Pills (Functional Filter Buttons) */}
+        {/* Category Pills (Segmented Button Group) */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-1 border-t border-slate-100">
           <button
             onClick={() => setSelectedCategory('all')}
-            className={`px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition-colors ${
+            className={`px-3 py-1.5 text-xs font-semibold rounded-lg whitespace-nowrap transition-colors ${
               selectedCategory === 'all'
                 ? 'bg-slate-900 text-white shadow-2xs'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900'
@@ -363,7 +376,7 @@ export const MasterSummary: React.FC<MasterSummaryProps> = ({
               <button
                 key={catKey}
                 onClick={() => setSelectedCategory(catKey)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition-colors ${
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg whitespace-nowrap transition-colors ${
                   isSelected
                     ? 'bg-emerald-700 text-white shadow-2xs'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900'
@@ -377,11 +390,11 @@ export const MasterSummary: React.FC<MasterSummaryProps> = ({
       </div>
 
       {/* Main Aggregated Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
+      <div className="bg-white rounded-xl border border-slate-200/90 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm border-collapse">
             <thead>
-              <tr className="bg-slate-50 text-slate-600 text-xs font-semibold border-b border-slate-200">
+              <tr className="bg-slate-50/90 text-slate-600 text-xs font-semibold border-b border-slate-200">
                 <th className="py-3 px-3.5 w-12 text-center">ক্রমিক</th>
                 <th 
                   onClick={() => toggleSort('name')}
@@ -424,7 +437,7 @@ export const MasterSummary: React.FC<MasterSummaryProps> = ({
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-slate-500">
                     <p className="text-base font-medium">কোনো উপাদান পাওয়া যায়নি</p>
-                    <p className="text-xs text-slate-400 mt-1">অনুসন্ধানের কি-ওয়ার্ড পরিবর্তন করে দেখুন</p>
+                    <p className="text-xs text-slate-400 mt-1">অনুসন্ধানের কি-ওয়ার্ড বা ক্যাটাগরি পরিবর্তন করে দেখুন</p>
                   </td>
                 </tr>
               ) : (
@@ -439,7 +452,7 @@ export const MasterSummary: React.FC<MasterSummaryProps> = ({
                   return (
                     <tr 
                       key={item.canonicalKey}
-                      className="hover:bg-slate-50/80 transition-colors group"
+                      className="hover:bg-slate-50/70 transition-colors group"
                     >
                       {/* Index */}
                       <td className="py-3 px-3.5 text-center text-xs font-mono text-slate-400">
@@ -452,7 +465,7 @@ export const MasterSummary: React.FC<MasterSummaryProps> = ({
                           {item.displayName}
                         </div>
                         <div className="text-2xs text-slate-400 flex items-center gap-1.5 mt-0.5">
-                          <span className="font-medium text-slate-500">{cat.nameBn}</span>
+                          <span className="font-medium text-slate-600">{cat.nameBn}</span>
                           {item.secondaryAmountText && (
                             <>
                               <span aria-hidden="true">·</span>
@@ -493,7 +506,7 @@ export const MasterSummary: React.FC<MasterSummaryProps> = ({
                                 if (e.key === 'Enter') saveEditAmount(item.canonicalKey);
                                 if (e.key === 'Escape') setEditingAmountKey(null);
                               }}
-                              className="w-24 text-right px-2 py-1 text-sm font-mono font-bold bg-white border-2 border-emerald-600 rounded-md focus:outline-none text-slate-900 shadow-xs"
+                              className="w-24 text-right px-2 py-1 text-sm font-mono font-bold bg-white border-2 border-emerald-600 rounded-md focus:outline-none text-slate-900 shadow-2xs"
                             />
                             <button
                               onClick={() => saveEditAmount(item.canonicalKey)}
@@ -557,7 +570,7 @@ export const MasterSummary: React.FC<MasterSummaryProps> = ({
 
             {/* Table Footer: Grand Total Sum */}
             <tfoot>
-              <tr className="bg-slate-100/90 text-slate-900 font-semibold border-t-2 border-slate-300">
+              <tr className="bg-slate-50 text-slate-900 font-semibold border-t-2 border-slate-200">
                 <td colSpan={2} className="py-4 px-4 text-sm font-bold">
                   সর্বমোট হিসাব ({sortedItems.length} টি উপাদান)
                 </td>

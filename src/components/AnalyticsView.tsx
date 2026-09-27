@@ -1,7 +1,7 @@
 import React from 'react';
 import { AggregatedMasterItem, CATEGORIES, ItemCategory, Meal } from '../types/meal';
 import { formatCurrency, formatNumberBn } from '../utils/calculator';
-import { PieChart, TrendingUp, AlertCircle, Award } from 'lucide-react';
+import { PieChart, TrendingUp, Award, Layers } from 'lucide-react';
 
 interface AnalyticsViewProps {
   aggregatedItems: AggregatedMasterItem[];
@@ -31,7 +31,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
       percentage,
       color: catKey === 'snacks_bus' ? 'bg-teal-600' :
              catKey === 'beef' ? 'bg-red-600' :
-             catKey === 'mutton' ? 'bg-orange-600' :
+             catKey === 'mutton' ? 'bg-amber-600' :
              catKey === 'protein' ? 'bg-rose-500' :
              catKey === 'grains' ? 'bg-amber-500' :
              catKey === 'oils' ? 'bg-yellow-500' :
@@ -77,11 +77,21 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
     .filter(i => i.canonicalKey === 'chicken' || i.canonicalKey === 'beef' || i.canonicalKey === 'mutton' || i.canonicalKey === 'beef_mutton')
     .reduce((sum, i) => sum + i.totalQuantity, 0);
 
+  const totalChickenKg = aggregatedItems
+    .find(i => i.canonicalKey === 'chicken')?.totalQuantity || 0;
+
   const totalBeefKg = aggregatedItems
     .find(i => i.canonicalKey === 'beef')?.totalQuantity || 0;
 
   const totalMuttonKg = aggregatedItems
     .find(i => i.canonicalKey === 'mutton')?.totalQuantity || 0;
+
+  const totalRuiKg = aggregatedItems
+    .find(i => i.canonicalKey === 'rui_fish')?.totalQuantity || 0;
+
+  const totalShrimpKg = aggregatedItems
+    .filter(i => i.canonicalKey.includes('shrimp'))
+    .reduce((sum, i) => sum + i.totalQuantity, 0);
 
   const totalFishKg = aggregatedItems
     .filter(i => i.canonicalKey === 'rui_fish' || i.canonicalKey.includes('shrimp'))
@@ -91,74 +101,78 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
     .find(i => i.canonicalKey === 'egg')?.totalQuantity || 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       
       {/* Quick Volume Highlights Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <div className="bg-white p-3.5 rounded-xl border border-slate-200">
+        <div className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-2xs">
           <div className="text-2xs text-slate-500 font-medium">মোট চাল প্রয়োজন</div>
-          <div className="text-xl font-bold font-mono text-slate-900 mt-1">
+          <div className="text-xl font-bold font-mono text-slate-900 mt-1 tabular-nums">
             {formatNumberBn(totalRiceKg)} <span className="text-xs font-normal text-slate-500">কেজি</span>
           </div>
-          <div className="text-3xs text-slate-400 mt-0.5">পোলাও + সাদা + বাসমতি</div>
+          <div className="text-3xs text-slate-400 mt-1">পোলাও + বাসমতি + সাদা ভাত</div>
         </div>
 
-        <div className="bg-white p-3.5 rounded-xl border border-slate-200">
+        <div className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-2xs">
           <div className="text-2xs text-slate-500 font-medium">মোট ভোজ্য তেল</div>
-          <div className="text-xl font-bold font-mono text-slate-900 mt-1">
+          <div className="text-xl font-bold font-mono text-slate-900 mt-1 tabular-nums">
             {formatNumberBn(totalOilKg)} <span className="text-xs font-normal text-slate-500">কেজি</span>
           </div>
-          <div className="text-3xs text-slate-400 mt-0.5">সয়াবিন + সরিষা</div>
+          <div className="text-3xs text-slate-400 mt-1">সয়াবিন ও খাঁটি সরিষা তেল</div>
         </div>
 
-        <div className="bg-white p-3.5 rounded-xl border border-slate-200">
-          <div className="text-2xs text-slate-500 font-medium">মোট মাংস (গরু+খাসি+মুরগি)</div>
-          <div className="text-xl font-bold font-mono text-slate-900 mt-1">
+        <div className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-2xs">
+          <div className="text-2xs text-slate-500 font-medium">মোট মাংস (মুরগি+গরু+খাসি)</div>
+          <div className="text-xl font-bold font-mono text-slate-900 mt-1 tabular-nums">
             {formatNumberBn(totalMeatKg)} <span className="text-xs font-normal text-slate-500">কেজি</span>
           </div>
-          <div className="text-3xs text-slate-400 mt-0.5">৬৪ কেজি মুরগি + {totalBeefKg} কেজি গরু + {totalMuttonKg} কেজি খাসি</div>
+          <div className="text-3xs text-slate-400 mt-1">
+            {totalChickenKg.toFixed(1)}কে মুরগি · {totalBeefKg.toFixed(1)}কে গরু · {totalMuttonKg.toFixed(1)}কে খাসি
+          </div>
         </div>
 
-        <div className="bg-white p-3.5 rounded-xl border border-slate-200">
+        <div className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-2xs">
           <div className="text-2xs text-slate-500 font-medium">মোট মাছ ও চিংড়ি</div>
-          <div className="text-xl font-bold font-mono text-slate-900 mt-1">
+          <div className="text-xl font-bold font-mono text-slate-900 mt-1 tabular-nums">
             {formatNumberBn(totalFishKg)} <span className="text-xs font-normal text-slate-500">কেজি</span>
           </div>
-          <div className="text-3xs text-slate-400 mt-0.5">৩০ কেজি রুই + ৮.৫ কেজি চিংড়ি</div>
+          <div className="text-3xs text-slate-400 mt-1">
+            {totalRuiKg.toFixed(1)}কে রুই · {totalShrimpKg.toFixed(1)}কে চিংড়ি
+          </div>
         </div>
 
-        <div className="bg-white p-3.5 rounded-xl border border-slate-200 col-span-2 sm:col-span-1">
+        <div className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-2xs col-span-2 sm:col-span-1">
           <div className="text-2xs text-slate-500 font-medium">মোট ডিম লাগবে</div>
-          <div className="text-xl font-bold font-mono text-slate-900 mt-1">
+          <div className="text-xl font-bold font-mono text-slate-900 mt-1 tabular-nums">
             {totalEggPcs} <span className="text-xs font-normal text-slate-500">পিস</span>
           </div>
-          <div className="text-3xs text-slate-400 mt-0.5">৩ বেলায় মোট ডিম</div>
+          <div className="text-3xs text-slate-400 mt-1">কোরমা, ভর্তা ও টিকিয়া তৈরিতে</div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         
         {/* Category Breakdown Card */}
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-2xs">
-          <div className="flex items-center justify-between mb-4">
+        <div className="bg-white p-5 rounded-xl border border-slate-200/90 shadow-2xs">
+          <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
             <div>
-              <h3 className="text-base font-bold text-slate-900">
+              <h3 className="text-base font-bold text-slate-900 tracking-tight">
                 ক্যাটাগরিভিত্তিক ব্যয়ের বিভাজন
               </h3>
-              <p className="text-xs text-slate-500">কোন খাতে কত টাকা ও মোট বাজেটের কত শতাংশ খরচ</p>
+              <p className="text-xs text-slate-500 mt-0.5">কোন খাতে কত টাকা ও মোট বাজেটের কত শতাংশ খরচ</p>
             </div>
-            <span className="text-xs font-mono font-bold text-emerald-800 bg-emerald-50 px-2 py-1 rounded">
+            <span className="text-xs font-mono font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
               ১০০%
             </span>
           </div>
 
-          <div className="space-y-3.5">
+          <div className="space-y-3">
             {categoryStats.map((cat) => (
               <div key={cat.key} className="space-y-1">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-semibold text-slate-800">{cat.name}</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-slate-500 font-mono text-2xs">{cat.itemCount} টি আইটেম</span>
+                    <span className="text-slate-400 font-mono text-2xs">{cat.itemCount} টি</span>
                     <span className="font-mono font-bold text-slate-900">৳ {formatCurrency(cat.totalCost)}</span>
                     <span className="font-mono text-emerald-700 font-bold w-12 text-right">
                       {cat.percentage.toFixed(1)}%
@@ -177,26 +191,26 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         </div>
 
         {/* Meal Breakdown Card */}
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-2xs">
-          <div className="flex items-center justify-between mb-4">
+        <div className="bg-white p-5 rounded-xl border border-slate-200/90 shadow-2xs">
+          <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
             <div>
-              <h3 className="text-base font-bold text-slate-900">
-                বেলা অনুযায়ী খরচের তুলনা (৬ বেলা)
+              <h3 className="text-base font-bold text-slate-900 tracking-tight">
+                বেলা অনুযায়ী খরচের তুলনা (৬ বেলা + বাস)
               </h3>
-              <p className="text-xs text-slate-500">প্রতি বেলার মেনুর মোট বাজেট ও শতাংশ</p>
+              <p className="text-xs text-slate-500 mt-0.5">প্রতি বেলার মেনুর মোট বাজেট ও ব্যয়ের অনুপাত</p>
             </div>
-            <span className="text-xs font-mono font-bold text-slate-700 bg-slate-100 px-2 py-1 rounded">
-              ৬ বেলা
+            <span className="text-xs font-mono font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
+              {meals.length} টি স্লট
             </span>
           </div>
 
-          <div className="space-y-3.5">
-            {mealStats.map((meal, index) => (
+          <div className="space-y-3">
+            {mealStats.map((meal) => (
               <div key={meal.id} className="space-y-1">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-semibold text-slate-800">{meal.title}</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-slate-500 font-mono text-2xs">{meal.itemCount} আইটেম</span>
+                    <span className="text-slate-400 font-mono text-2xs">{meal.itemCount} টি</span>
                     <span className="font-mono font-bold text-slate-900">৳ {formatCurrency(meal.cost)}</span>
                     <span className="font-mono text-slate-700 font-bold w-12 text-right">
                       {meal.percentage.toFixed(1)}%
@@ -217,15 +231,15 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
       </div>
 
       {/* Top 10 Major Cost Items */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
+      <div className="bg-white rounded-xl border border-slate-200/90 shadow-2xs overflow-hidden">
         <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between">
           <div>
-            <h3 className="text-base font-bold text-slate-900">
+            <h3 className="text-base font-bold text-slate-900 tracking-tight">
               সর্বোচ্চ ব্যয়ের শীর্ষ ১০টি বাজার উপাদান
             </h3>
-            <p className="text-xs text-slate-500">এই উপাদানগুলোতে মোট বাজেটের সিংহভাগ ব্যয় হবে</p>
+            <p className="text-xs text-slate-500 mt-0.5">এই উপাদানগুলোতে মোট বাজেটের সিংহভাগ ব্যয় হবে</p>
           </div>
-          <span className="text-xs font-medium text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+          <span className="text-xs font-semibold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
             টপ বাজেট আইটেমস
           </span>
         </div>
@@ -247,7 +261,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                 const sharePercent = grandTotal > 0 ? (item.totalCost / grandTotal) * 100 : 0;
 
                 return (
-                  <tr key={item.canonicalKey} className="hover:bg-slate-50 transition-colors">
+                  <tr key={item.canonicalKey} className="hover:bg-slate-50/70 transition-colors">
                     <td className="py-2.5 px-4 text-center font-mono font-bold text-xs text-slate-400">
                       {idx + 1}
                     </td>
