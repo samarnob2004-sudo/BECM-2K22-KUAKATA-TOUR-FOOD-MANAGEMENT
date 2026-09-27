@@ -96,37 +96,53 @@ export const Header: React.FC<HeaderProps> = ({
           </nav>
 
           {/* Zone 3: Primary actions & Member count */}
-          <div className="flex items-center gap-2.5">
-            <div className="hidden lg:flex items-center gap-1.5 bg-slate-100 px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs">
-              <Users className="w-3.5 h-3.5 text-slate-500" />
-              <span className="text-slate-600">টুর মেম্বার:</span>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 bg-slate-100 px-2 py-1 rounded-lg border border-slate-200 text-xs shadow-2xs">
+              <Users className="w-3.5 h-3.5 text-emerald-700 hidden sm:inline" />
+              <span className="text-slate-600 font-medium text-2xs sm:text-xs">মেম্বার:</span>
+              <button
+                type="button"
+                onClick={() => setStudentCount(Math.max(1, studentCount - 5))}
+                title="৫ জন কমান"
+                className="w-5 h-5 flex items-center justify-center rounded bg-white hover:bg-slate-200 text-slate-700 font-bold text-xs border border-slate-300 transition-colors"
+              >
+                -
+              </button>
               <input
                 type="number"
                 min="1"
                 max="500"
                 value={studentCount}
                 onChange={(e) => setStudentCount(Math.max(1, parseInt(e.target.value) || 1))}
-                className="w-12 bg-white px-1.5 py-0.5 border border-slate-300 rounded text-center font-mono font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                className="w-11 bg-white px-1 py-0.5 border border-slate-300 rounded text-center font-mono font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs"
               />
-              <span className="text-slate-600">জন</span>
+              <button
+                type="button"
+                onClick={() => setStudentCount(Math.min(500, studentCount + 5))}
+                title="৫ জন বাড়ান"
+                className="w-5 h-5 flex items-center justify-center rounded bg-white hover:bg-slate-200 text-slate-700 font-bold text-xs border border-slate-300 transition-colors"
+              >
+                +
+              </button>
+              <span className="text-slate-600 text-2xs sm:text-xs">জন</span>
             </div>
 
             <button
               onClick={onExport}
               title="এক্সপোর্ট ও কপি করুন"
-              className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-1.5 shadow-2xs"
+              className="px-2.5 sm:px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-1.5 shadow-2xs"
             >
               <Download className="w-3.5 h-3.5 text-slate-600" />
-              <span className="hidden sm:inline">এক্সপোর্ট / শেয়ার</span>
+              <span className="hidden md:inline">এক্সপোর্ট</span>
             </button>
 
             <button
               onClick={() => setActiveTab('print')}
               title="মেমো ভিউ ও PDF ডাউনলোড"
-              className="px-3 py-1.5 text-xs font-medium text-white bg-emerald-700 rounded-lg hover:bg-emerald-800 transition-colors flex items-center gap-1.5 shadow-xs"
+              className="px-2.5 sm:px-3 py-1.5 text-xs font-medium text-white bg-emerald-700 rounded-lg hover:bg-emerald-800 transition-colors flex items-center gap-1.5 shadow-xs"
             >
               <FileDown className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">বাজারের মেমো PDF</span>
+              <span className="hidden sm:inline">মেমো PDF</span>
             </button>
 
             <button

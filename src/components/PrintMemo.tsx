@@ -204,7 +204,7 @@ export const PrintMemo: React.FC<PrintMemoProps> = ({
                 কুয়াকাটা টুর ২০২৬ বাজার হিসাব পরিসমাপ্তি
               </div>
               <div className="text-xs text-slate-500 mt-0.5">
-                ৬ বেলা খাবার · ১২০ জন ছাত্রছাত্রী · সর্বমোট উপাদান: {aggregatedItems.length} টি
+                ৬ বেলা খাবার ও বাসের নাস্তা · {studentCount} জন অংশগ্রহণকারী · সর্বমোট উপাদান: {aggregatedItems.length} টি
               </div>
             </div>
 

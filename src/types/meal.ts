@@ -1,12 +1,15 @@
 export type UnitType = 'কেজি' | 'গ্রাম' | 'লিটার' | 'পিস' | 'প্যাকেট' | 'তোলা' | 'হালি' | 'টাকা';
 
 export type ItemCategory = 
+  | 'snacks_bus'      // বাসের নাস্তা (কেক, জুস ইত্যাদি)
+  | 'beef'            // গরুর মাংস
+  | 'mutton'          // খাসির মাংস
+  | 'protein'         // মুরগি, মাছ, ডিম, শুটকি, চিংড়ি
   | 'grains'          // চাল, ডাল, ময়দা
-  | 'protein'         // মুরগি, গরু/খাসি, মাছ, ডিম, শুটকি, চিংড়ি
   | 'oils'            // সয়াবিন তেল, সরিষার তেল, ঘি, বাটার অয়েল
   | 'spices'          // মশলাপাতি, জিরা, হলুদ, মরিচ, গরম মশলা
   | 'vegetables'      // আলু, পেয়াজ, রসুন, আদা, শাকসবজি, ফলমূল
-  | 'dairy_sweets'    // দুধ, মিষ্টি, ক্ষীর, চিনি, মোরব্বা, বাদাম
+  | 'dairy_sweets'    // দুধ, চিনি, মিষ্টি ও বাদাম/ডেজার্ট
   | 'condiments';     // সস, সিরকা, সয়াসস, টকদই, সালাদ উপাদান
 
 export interface CategoryInfo {
@@ -18,19 +21,40 @@ export interface CategoryInfo {
 }
 
 export const CATEGORIES: Record<ItemCategory, CategoryInfo> = {
+  snacks_bus: {
+    id: 'snacks_bus',
+    nameBn: 'বাসের নাস্তা ও ওয়েলকাম স্ন্যাক্স',
+    nameEn: 'Bus Snacks & Welcome',
+    colorClass: 'bg-teal-50 text-teal-900 border-teal-200',
+    borderClass: 'border-teal-200',
+  },
+  beef: {
+    id: 'beef',
+    nameBn: 'গরুর মাংস',
+    nameEn: 'Beef',
+    colorClass: 'bg-red-50 text-red-900 border-red-200',
+    borderClass: 'border-red-200',
+  },
+  mutton: {
+    id: 'mutton',
+    nameBn: 'খাসির মাংস',
+    nameEn: 'Mutton',
+    colorClass: 'bg-orange-50 text-orange-900 border-orange-200',
+    borderClass: 'border-orange-200',
+  },
+  protein: {
+    id: 'protein',
+    nameBn: 'মুরগি, মাছ, ডিম ও চিংড়ি',
+    nameEn: 'Poultry, Fish & Eggs',
+    colorClass: 'bg-rose-50 text-rose-900 border-rose-200',
+    borderClass: 'border-rose-200',
+  },
   grains: {
     id: 'grains',
     nameBn: 'চাল, ডাল ও আটা/ময়দা',
     nameEn: 'Grains & Pulses',
     colorClass: 'bg-amber-50 text-amber-900 border-amber-200',
     borderClass: 'border-amber-200',
-  },
-  protein: {
-    id: 'protein',
-    nameBn: 'মাছ, মাংস, ডিম ও চিংড়ি',
-    nameEn: 'Meat, Fish & Eggs',
-    colorClass: 'bg-rose-50 text-rose-900 border-rose-200',
-    borderClass: 'border-rose-200',
   },
   oils: {
     id: 'oils',
@@ -75,18 +99,21 @@ export interface MealItem {
   canonicalKey: string; // Used to aggregate identical items across meals
   category: ItemCategory;
   amount: number;
+  baseAmount?: number; // Baseline amount at 120 participants for dynamic proportional scaling
   unit: UnitType;
   unitPrice: number; // Price per unit (e.g. rate per kg, per piece, per packet)
   customFixedPrice?: number; // For lump-sum items like '৩০০ টাকার গরম মশলা'
   note?: string; // e.g. "কেজিতে ১৪ পিস, জনপ্রতি ৩ পিস"
+  isAutoScaled?: boolean; // Marker if this item auto-scales with student count
 }
 
 export interface Meal {
   id: string;
   title: string;
   day: 1 | 2;
-  timeSlot: 'সকাল' | 'দুপুর' | 'রাত';
+  timeSlot: 'যাত্রা' | 'সকাল' | 'দুপুর' | 'রাত';
   description: string;
+  menuSummary?: string; // e.g. "খিচুড়ি, আমড়ার চাটনি, ডিমের কোরমা, লেবু"
   items: MealItem[];
 }
 

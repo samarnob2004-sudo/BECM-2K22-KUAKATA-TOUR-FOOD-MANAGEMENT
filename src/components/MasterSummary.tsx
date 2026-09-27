@@ -17,6 +17,7 @@ interface MasterSummaryProps {
   }) => void;
   grandTotal: number;
   studentCount: number;
+  setStudentCount?: (count: number) => void;
 }
 
 export const MasterSummary: React.FC<MasterSummaryProps> = ({
@@ -26,6 +27,7 @@ export const MasterSummary: React.FC<MasterSummaryProps> = ({
   onAddNewMasterItem,
   grandTotal,
   studentCount,
+  setStudentCount,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -135,10 +137,34 @@ export const MasterSummary: React.FC<MasterSummaryProps> = ({
               ৬ বেলার খাবারের একীভূত বাজার তালিকা ও প্রাক্কলন
             </h1>
             <p className="text-emerald-100/90 text-sm mt-1 max-w-3xl">
-              ৬ বেলার শুরুতে দেওয়া সব উপাদানের মোট পরিমাণ এখানে অপরিবর্তিত রাখা হয়েছে। 
-              আপনি চাইলে যেকোনো উপাদানের <strong>সর্বমোট পরিমাণ</strong> ও <strong>একক দর</strong> এডিট করতে পারেন, 
-              এবং সরাসরি <strong>নতুন উপাদান যোগ</strong> করতে পারেন।
+              সদস্য সংখ্যা বাড়ানো বা কমানো হলে প্রারম্ভিক ১২০ জনের অনুপাতে তালিকার <strong>প্রতিটি কাঁচাবাজারের পরিমাণ</strong> (চাল, ডাল, তেল, সবজি, মাছ, মাংস ও মশলাপাতি) স্বয়ংক্রিয়ভাবে পরিবর্তিত হয়।
             </p>
+
+            {setStudentCount && (
+              <div className="mt-3 inline-flex items-center gap-2 bg-emerald-900/80 border border-emerald-700/80 px-3 py-1.5 rounded-lg text-xs">
+                <span className="text-emerald-200 font-medium">টুর মেম্বার পরিবর্তন:</span>
+                <button
+                  type="button"
+                  onClick={() => setStudentCount(Math.max(1, studentCount - 5))}
+                  title="৫ জন কমান"
+                  className="w-5 h-5 flex items-center justify-center rounded bg-emerald-800 hover:bg-emerald-700 text-white font-bold transition-colors"
+                >
+                  -
+                </button>
+                <span className="font-mono font-bold text-white px-1">{studentCount} জন</span>
+                <button
+                  type="button"
+                  onClick={() => setStudentCount(Math.min(500, studentCount + 5))}
+                  title="৫ জন বাড়ান"
+                  className="w-5 h-5 flex items-center justify-center rounded bg-emerald-800 hover:bg-emerald-700 text-white font-bold transition-colors"
+                >
+                  +
+                </button>
+                <span className="text-emerald-300 text-2xs ml-1 border-l border-emerald-700/80 pl-2">
+                  অনুপাত: {(studentCount / 120).toFixed(2)}x (১২০ জন বেসলাইন)
+                </span>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col items-end gap-2 shrink-0">

@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { ItemCategory, Meal, MealItem, UnitType } from './types/meal';
-import { INITIAL_MEALS_DATA } from './data/defaultTourData';
+import { INITIAL_MEALS_DATA, recalculateAutoScaledMeals, getTourMealsData } from './data/defaultTourData';
 import { aggregateMasterItems } from './utils/calculator';
 import { Header } from './components/Header';
 import { MetricCards } from './components/MetricCards';
@@ -16,22 +16,37 @@ import { PrintMemo } from './components/PrintMemo';
 import { ExportModal } from './components/ExportModal';
 import { AlertTriangle } from 'lucide-react';
 
-const STORAGE_KEY_MEALS = 'kuakata_tour_meals_v2';
-const STORAGE_KEY_OVERRIDES = 'kuakata_tour_price_overrides_v2';
-const STORAGE_KEY_STUDENTS = 'kuakata_tour_student_count_v2';
+const STORAGE_KEY_MEALS = 'kuakata_tour_meals_v5';
+const STORAGE_KEY_OVERRIDES = 'kuakata_tour_price_overrides_v5';
+const STORAGE_KEY_STUDENTS = 'kuakata_tour_student_count_v5';
 
 export default function App() {
   // Initialize state with LocalStorage support
+  const [studentCount, setStudentCount] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_STUDENTS);
+      if (saved) {
+        return Math.max(1, parseInt(saved) || 120);
+      }
+    } catch (e) {
+      console.error('Failed to load student count', e);
+    }
+    return 120;
+  });
+
   const [meals, setMeals] = useState<Meal[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_MEALS);
       if (saved) {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
       }
     } catch (e) {
       console.error('Failed to load meals from localStorage', e);
     }
-    return INITIAL_MEALS_DATA;
+    return getTourMealsData(120);
   });
 
   const [priceOverrides, setPriceOverrides] = useState<Record<string, number>>(() => {
@@ -44,18 +59,6 @@ export default function App() {
       console.error('Failed to load overrides from localStorage', e);
     }
     return {};
-  });
-
-  const [studentCount, setStudentCount] = useState<number>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_STUDENTS);
-      if (saved) {
-        return parseInt(saved) || 120;
-      }
-    } catch (e) {
-      console.error('Failed to load student count', e);
-    }
-    return 120;
   });
 
   const [activeTab, setActiveTab] = useState<'summary' | 'meals' | 'analytics' | 'print'>('summary');
@@ -96,6 +99,22 @@ export default function App() {
   const grandTotal = useMemo(() => {
     return aggregatedItems.reduce((sum, item) => sum + item.totalCost, 0);
   }, [aggregatedItems]);
+
+  // Handler: Change student count and auto-recalculate scaled meal quantities
+  const handleStudentCountChange = (newCount: number) => {
+    const validCount = Math.max(1, newCount);
+    setStudentCount(validCount);
+    setMeals((prevMeals) => recalculateAutoScaledMeals(prevMeals, validCount));
+  };
+
+  // Handler: Update Meal Menu Summary
+  const handleUpdateMealMenuSummary = (mealId: string, summary: string) => {
+    setMeals((prevMeals) =>
+      prevMeals.map((meal) =>
+        meal.id === mealId ? { ...meal, menuSummary: summary } : meal
+      )
+    );
+  };
 
   // Handler: Update Master Unit Price (e.g. from the Master Summary view)
   const handleUpdateMasterPrice = (canonicalKey: string, newPrice: number) => {
@@ -140,7 +159,9 @@ export default function App() {
           return {
             ...meal,
             items: meal.items.map((item) =>
-              item.id === occ.itemId ? { ...item, amount: newQuantity } : item
+              item.id === occ.itemId 
+                ? { ...item, amount: newQuantity, baseAmount: (newQuantity * 120) / studentCount } 
+                : item
             ),
           };
         });
@@ -159,7 +180,11 @@ export default function App() {
         items: meal.items.map((item) => {
           if (item.canonicalKey === canonicalKey) {
             const scaled = parseFloat((item.amount * ratio).toFixed(2));
-            return { ...item, amount: scaled };
+            return { 
+              ...item, 
+              amount: scaled,
+              baseAmount: (scaled * 120) / studentCount,
+            };
           }
           return item;
         }),
@@ -185,6 +210,7 @@ export default function App() {
       canonicalKey,
       category: data.category,
       amount: data.amount,
+      baseAmount: (data.amount * 120) / studentCount,
       unit: data.unit,
       unitPrice: data.unitPrice,
     };
@@ -222,6 +248,10 @@ export default function App() {
             if (item.id !== itemId) return item;
             const updated = { ...item, ...updates };
 
+            if (updates.amount !== undefined) {
+              updated.baseAmount = (updates.amount * 120) / studentCount;
+            }
+
             // If unit price was updated, also register in master overrides
             if (updates.unitPrice !== undefined) {
               setPriceOverrides((prev) => ({
@@ -242,6 +272,7 @@ export default function App() {
     const newItem: MealItem = {
       ...newItemData,
       id: `item_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      baseAmount: newItemData.baseAmount ?? (newItemData.amount * 120) / studentCount,
     };
 
     setMeals((prevMeals) =>
@@ -278,7 +309,8 @@ export default function App() {
 
   // Handler: Reset to factory defaults
   const handleConfirmReset = () => {
-    setMeals(INITIAL_MEALS_DATA);
+    const defaultData = getTourMealsData(120);
+    setMeals(defaultData);
     setPriceOverrides({});
     setStudentCount(120);
     localStorage.removeItem(STORAGE_KEY_MEALS);
@@ -297,7 +329,7 @@ export default function App() {
         onReset={() => setIsResetConfirmOpen(true)}
         onExport={() => setIsExportOpen(true)}
         studentCount={studentCount}
-        setStudentCount={setStudentCount}
+        setStudentCount={handleStudentCountChange}
         grandTotal={grandTotal}
       />
 
@@ -310,7 +342,7 @@ export default function App() {
             grandTotal={grandTotal}
             totalUniqueItems={aggregatedItems.length}
             studentCount={studentCount}
-            setStudentCount={setStudentCount}
+            setStudentCount={handleStudentCountChange}
             mealCount={meals.length}
           />
         )}
@@ -324,16 +356,20 @@ export default function App() {
             onAddNewMasterItem={handleAddNewMasterItem}
             grandTotal={grandTotal}
             studentCount={studentCount}
+            setStudentCount={handleStudentCountChange}
           />
         )}
 
-        {/* Tab 2: Meal-by-Meal Detailed Sheet (6 Meals) */}
+        {/* Tab 2: Meal-by-Meal Detailed Sheet (6 Meals + Bus Snacks) */}
         {activeTab === 'meals' && (
           <MealDetailView
             meals={meals}
             onUpdateMealItem={handleUpdateMealItem}
             onAddMealItem={handleAddMealItem}
             onDeleteMealItem={handleDeleteMealItem}
+            onUpdateMealMenuSummary={handleUpdateMealMenuSummary}
+            studentCount={studentCount}
+            setStudentCount={handleStudentCountChange}
           />
         )}
 

@@ -29,11 +29,14 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
       totalCost,
       itemCount: items.length,
       percentage,
-      color: catKey === 'protein' ? 'bg-rose-500' :
+      color: catKey === 'snacks_bus' ? 'bg-teal-600' :
+             catKey === 'beef' ? 'bg-red-600' :
+             catKey === 'mutton' ? 'bg-orange-600' :
+             catKey === 'protein' ? 'bg-rose-500' :
              catKey === 'grains' ? 'bg-amber-500' :
              catKey === 'oils' ? 'bg-yellow-500' :
              catKey === 'vegetables' ? 'bg-emerald-500' :
-             catKey === 'spices' ? 'bg-orange-500' :
+             catKey === 'spices' ? 'bg-orange-400' :
              catKey === 'dairy_sweets' ? 'bg-purple-500' : 'bg-cyan-500',
     };
   }).sort((a, b) => b.totalCost - a.totalCost);
@@ -71,8 +74,14 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
     .reduce((sum, i) => sum + i.totalQuantity, 0);
 
   const totalMeatKg = aggregatedItems
-    .filter(i => i.canonicalKey === 'chicken' || i.canonicalKey === 'beef_mutton')
+    .filter(i => i.canonicalKey === 'chicken' || i.canonicalKey === 'beef' || i.canonicalKey === 'mutton' || i.canonicalKey === 'beef_mutton')
     .reduce((sum, i) => sum + i.totalQuantity, 0);
+
+  const totalBeefKg = aggregatedItems
+    .find(i => i.canonicalKey === 'beef')?.totalQuantity || 0;
+
+  const totalMuttonKg = aggregatedItems
+    .find(i => i.canonicalKey === 'mutton')?.totalQuantity || 0;
 
   const totalFishKg = aggregatedItems
     .filter(i => i.canonicalKey === 'rui_fish' || i.canonicalKey.includes('shrimp'))
@@ -107,7 +116,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
           <div className="text-xl font-bold font-mono text-slate-900 mt-1">
             {formatNumberBn(totalMeatKg)} <span className="text-xs font-normal text-slate-500">কেজি</span>
           </div>
-          <div className="text-3xs text-slate-400 mt-0.5">৬৪ কেজি মুরগি + ৩০ কেজি গরু/খাসি</div>
+          <div className="text-3xs text-slate-400 mt-0.5">৬৪ কেজি মুরগি + {totalBeefKg} কেজি গরু + {totalMuttonKg} কেজি খাসি</div>
         </div>
 
         <div className="bg-white p-3.5 rounded-xl border border-slate-200">

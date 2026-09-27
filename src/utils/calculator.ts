@@ -181,13 +181,16 @@ export function aggregateMasterItems(
 
   // Sort by category order then by total cost descending
   const categoryOrder: Record<ItemCategory, number> = {
-    protein: 1,
-    grains: 2,
-    oils: 3,
-    vegetables: 4,
-    spices: 5,
-    dairy_sweets: 6,
-    condiments: 7,
+    snacks_bus: 1,
+    beef: 2,
+    mutton: 3,
+    protein: 4,
+    grains: 5,
+    oils: 6,
+    vegetables: 7,
+    spices: 8,
+    dairy_sweets: 9,
+    condiments: 10,
   };
 
   return aggregated.sort((a, b) => {
@@ -205,8 +208,11 @@ export function calculateTourSummary(meals: Meal[], aggregatedItems: AggregatedM
 
   // Category breakdown
   const categoryTotals: Record<ItemCategory, { count: number; cost: number; percentage: number }> = {
-    grains: { count: 0, cost: 0, percentage: 0 },
+    snacks_bus: { count: 0, cost: 0, percentage: 0 },
+    beef: { count: 0, cost: 0, percentage: 0 },
+    mutton: { count: 0, cost: 0, percentage: 0 },
     protein: { count: 0, cost: 0, percentage: 0 },
+    grains: { count: 0, cost: 0, percentage: 0 },
     oils: { count: 0, cost: 0, percentage: 0 },
     spices: { count: 0, cost: 0, percentage: 0 },
     vegetables: { count: 0, cost: 0, percentage: 0 },

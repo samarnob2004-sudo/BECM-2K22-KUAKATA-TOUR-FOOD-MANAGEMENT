@@ -107,6 +107,60 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
         </div>
       </div>
 
+      {/* Auto-Calculation Formulas Overview Strip */}
+      <div className="col-span-2 lg:col-span-4 bg-emerald-50/70 border border-emerald-200/80 rounded-xl p-3.5 text-xs text-emerald-950 space-y-2.5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2">
+            <span className="px-2 py-0.5 rounded-md bg-emerald-700 text-white font-semibold text-2xs uppercase tracking-wider">
+              ফুল ডাইনামিক ক্যালকুলেশন
+            </span>
+            <span className="text-xs font-medium text-emerald-900">
+              টুর সদস্য <strong className="font-bold underline text-emerald-950">{studentCount} জন</strong> (মূল অনুপাত: ১২০ জনের সাপেক্ষে সব উপাদান স্কেল্ড):
+            </span>
+          </div>
+
+          {/* Quick presets */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-2xs text-slate-500 font-medium">দ্রুত মেম্বার সিলেক্ট:</span>
+            {[60, 80, 100, 120, 150, 200].map((preset) => (
+              <button
+                key={preset}
+                type="button"
+                onClick={() => setStudentCount(preset)}
+                className={`px-2 py-0.5 rounded-md text-2xs font-semibold transition-all ${
+                  studentCount === preset
+                    ? 'bg-emerald-700 text-white shadow-2xs'
+                    : 'bg-white hover:bg-emerald-100 text-emerald-900 border border-emerald-200'
+                }`}
+              >
+                {preset} জন {preset === 120 ? '(মূল)' : ''}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 text-2xs text-emerald-900 pt-1 border-t border-emerald-200/60">
+          <span className="bg-white px-2 py-1 rounded-md border border-emerald-200/80 shadow-2xs">
+            বাসের নাস্তা: <strong>{studentCount} পিস</strong> কেক + <strong>{studentCount} পিস</strong> জুস
+          </span>
+          <span className="bg-white px-2 py-1 rounded-md border border-emerald-200/80 shadow-2xs">
+            মুরগি (৩ পিস/জন, ১৪ পিস/কেজি): <strong>{((studentCount * 3) / 14).toFixed(1)} কেজি</strong>
+          </span>
+          <span className="bg-white px-2 py-1 rounded-md border border-emerald-200/80 shadow-2xs">
+            রুই মাছ (১ পিস/জন, ৮ পিস/কেজি): <strong>{(studentCount / 8).toFixed(1)} কেজি</strong>
+          </span>
+          <span className="bg-white px-2 py-1 rounded-md border border-emerald-200/80 shadow-2xs">
+            গরুর মাংস (৮৫% বরাদ্দ): <strong>{(studentCount * 0.85 * 0.125).toFixed(1)} কেজি</strong>
+          </span>
+          <span className="bg-white px-2 py-1 rounded-md border border-emerald-200/80 shadow-2xs">
+            খাসির মাংস (১৫% বরাদ্দ): <strong>{(studentCount * 0.15 * 0.125).toFixed(1)} কেজি</strong>
+          </span>
+          <span className="bg-white px-2 py-1 rounded-md border border-emerald-200/80 shadow-2xs font-medium text-emerald-800">
+            চাল, ডাল, আলু, তেল ও মশলা: <strong>{(studentCount / 120).toFixed(2)}x অনুপাতে লাইভ আপডেট</strong>
+          </span>
+        </div>
+      </div>
+
     </div>
   );
 };
