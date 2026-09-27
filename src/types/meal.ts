@@ -1,0 +1,110 @@
+export type UnitType = 'কেজি' | 'গ্রাম' | 'লিটার' | 'পিস' | 'প্যাকেট' | 'তোলা' | 'হালি' | 'টাকা';
+
+export type ItemCategory = 
+  | 'grains'          // চাল, ডাল, ময়দা
+  | 'protein'         // মুরগি, গরু/খাসি, মাছ, ডিম, শুটকি, চিংড়ি
+  | 'oils'            // সয়াবিন তেল, সরিষার তেল, ঘি, বাটার অয়েল
+  | 'spices'          // মশলাপাতি, জিরা, হলুদ, মরিচ, গরম মশলা
+  | 'vegetables'      // আলু, পেয়াজ, রসুন, আদা, শাকসবজি, ফলমূল
+  | 'dairy_sweets'    // দুধ, মিষ্টি, ক্ষীর, চিনি, মোরব্বা, বাদাম
+  | 'condiments';     // সস, সিরকা, সয়াসস, টকদই, সালাদ উপাদান
+
+export interface CategoryInfo {
+  id: ItemCategory;
+  nameBn: string;
+  nameEn: string;
+  colorClass: string;
+  borderClass: string;
+}
+
+export const CATEGORIES: Record<ItemCategory, CategoryInfo> = {
+  grains: {
+    id: 'grains',
+    nameBn: 'চাল, ডাল ও আটা/ময়দা',
+    nameEn: 'Grains & Pulses',
+    colorClass: 'bg-amber-50 text-amber-900 border-amber-200',
+    borderClass: 'border-amber-200',
+  },
+  protein: {
+    id: 'protein',
+    nameBn: 'মাছ, মাংস, ডিম ও চিংড়ি',
+    nameEn: 'Meat, Fish & Eggs',
+    colorClass: 'bg-rose-50 text-rose-900 border-rose-200',
+    borderClass: 'border-rose-200',
+  },
+  oils: {
+    id: 'oils',
+    nameBn: 'তেল, ঘি ও বাটার',
+    nameEn: 'Oils & Fats',
+    colorClass: 'bg-yellow-50 text-yellow-900 border-yellow-200',
+    borderClass: 'border-yellow-200',
+  },
+  vegetables: {
+    id: 'vegetables',
+    nameBn: 'পেঁয়াজ, রসুন, আদা ও শাকসবজি',
+    nameEn: 'Vegetables & Aromatics',
+    colorClass: 'bg-emerald-50 text-emerald-900 border-emerald-200',
+    borderClass: 'border-emerald-200',
+  },
+  spices: {
+    id: 'spices',
+    nameBn: 'মসলাপাতি ও শুকনা মশলা',
+    nameEn: 'Spices & Seasonings',
+    colorClass: 'bg-orange-50 text-orange-900 border-orange-200',
+    borderClass: 'border-orange-200',
+  },
+  dairy_sweets: {
+    id: 'dairy_sweets',
+    nameBn: 'দুধ, চিনি, মিষ্টি ও বাদাম/ডেজার্ট',
+    nameEn: 'Dairy, Sweets & Nuts',
+    colorClass: 'bg-purple-50 text-purple-900 border-purple-200',
+    borderClass: 'border-purple-200',
+  },
+  condiments: {
+    id: 'condiments',
+    nameBn: 'সস, ভিনেগার, টকদই ও সালাদ',
+    nameEn: 'Sauces, Curd & Salad',
+    colorClass: 'bg-cyan-50 text-cyan-900 border-cyan-200',
+    borderClass: 'border-cyan-200',
+  },
+};
+
+export interface MealItem {
+  id: string;
+  name: string;
+  canonicalKey: string; // Used to aggregate identical items across meals
+  category: ItemCategory;
+  amount: number;
+  unit: UnitType;
+  unitPrice: number; // Price per unit (e.g. rate per kg, per piece, per packet)
+  customFixedPrice?: number; // For lump-sum items like '৩০০ টাকার গরম মশলা'
+  note?: string; // e.g. "কেজিতে ১৪ পিস, জনপ্রতি ৩ পিস"
+}
+
+export interface Meal {
+  id: string;
+  title: string;
+  day: 1 | 2;
+  timeSlot: 'সকাল' | 'দুপুর' | 'রাত';
+  description: string;
+  items: MealItem[];
+}
+
+export interface AggregatedMasterItem {
+  canonicalKey: string;
+  displayName: string;
+  category: ItemCategory;
+  totalQuantity: number;
+  unit: UnitType;
+  secondaryAmountText?: string; // e.g. "৫ কেজি ৪০০ গ্রাম"
+  unitPrice: number;
+  totalCost: number;
+  occurrences: {
+    mealId: string;
+    mealTitle: string;
+    amount: number;
+    unit: UnitType;
+    note?: string;
+  }[];
+  manualPriceOverride?: number;
+}

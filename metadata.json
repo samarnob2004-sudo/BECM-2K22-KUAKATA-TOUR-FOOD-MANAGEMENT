@@ -1,0 +1,6 @@
+{
+  "name": "কুয়াকাটা টুর খাবার ও বাজার হিসাব - বিইসিএম ২২ ব্যাচ",
+  "description": "কুয়াকাটা টুর বিইসিএম ২২ ব্যাচ আয়োজিত ৬ বেলার খাবারের উপাদান, বাজার তালিকা ও সম্পূর্ণ খরচ হিসাব ক্যালকুলেটর",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
