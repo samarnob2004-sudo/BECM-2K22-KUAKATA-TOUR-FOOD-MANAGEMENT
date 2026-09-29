@@ -1,16 +1,18 @@
 export type UnitType = 'কেজি' | 'গ্রাম' | 'লিটার' | 'পিস' | 'প্যাকেট' | 'তোলা' | 'হালি' | 'টাকা';
 
 export type ItemCategory = 
-  | 'snacks_bus'      // বাসের নাস্তা (কেক, জুস ইত্যাদি)
-  | 'beef'            // গরুর মাংস
-  | 'mutton'          // খাসির মাংস
-  | 'protein'         // মুরগি, মাছ, ডিম, শুটকি, চিংড়ি
-  | 'grains'          // চাল, ডাল, ময়দা
-  | 'oils'            // সয়াবিন তেল, সরিষার তেল, ঘি, বাটার অয়েল
-  | 'spices'          // মশলাপাতি, জিরা, হলুদ, মরিচ, গরম মশলা
-  | 'vegetables'      // আলু, পেয়াজ, রসুন, আদা, শাকসবজি, ফলমূল
-  | 'dairy_sweets'    // দুধ, চিনি, মিষ্টি ও বাদাম/ডেজার্ট
-  | 'condiments';     // সস, সিরকা, সয়াসস, টকদই, সালাদ উপাদান
+  | 'grains'          // চাল/দানা জাতীয়
+  | 'protein'         // আমিষ
+  | 'vegetables'      // সবজি
+  | 'fruits'          // ফল
+  | 'spices'          // মশলা
+  | 'oils'            // তেল/ঘি
+  | 'dairy_sweets'    // দুধ/বাদাম/মিষ্টি
+  | 'sauces_liquids'  // সস/তরল
+  | 'beef'
+  | 'mutton'
+  | 'snacks_bus'
+  | 'condiments';
 
 export interface CategoryInfo {
   id: ItemCategory;
@@ -20,78 +22,135 @@ export interface CategoryInfo {
   borderClass: string;
 }
 
-export const CATEGORIES: Record<ItemCategory, CategoryInfo> = {
-  snacks_bus: {
-    id: 'snacks_bus',
-    nameBn: 'বাসের নাস্তা ও ওয়েলকাম স্ন্যাক্স',
-    nameEn: 'Bus Snacks & Welcome',
-    colorClass: 'bg-teal-50 text-teal-900 border-teal-200',
-    borderClass: 'border-teal-200',
-  },
-  beef: {
-    id: 'beef',
-    nameBn: 'গরুর মাংস',
-    nameEn: 'Beef',
-    colorClass: 'bg-red-50 text-red-900 border-red-200',
-    borderClass: 'border-red-200',
-  },
-  mutton: {
-    id: 'mutton',
-    nameBn: 'খাসির মাংস',
-    nameEn: 'Mutton',
-    colorClass: 'bg-orange-50 text-orange-900 border-orange-200',
-    borderClass: 'border-orange-200',
-  },
-  protein: {
-    id: 'protein',
-    nameBn: 'মুরগি, মাছ, ডিম ও চিংড়ি',
-    nameEn: 'Poultry, Fish & Eggs',
-    colorClass: 'bg-rose-50 text-rose-900 border-rose-200',
-    borderClass: 'border-rose-200',
-  },
+// 8 Official Rate List & App Categories requested by User
+export const ORDERED_CATEGORY_KEYS: ItemCategory[] = [
+  'grains',
+  'protein',
+  'vegetables',
+  'fruits',
+  'spices',
+  'oils',
+  'dairy_sweets',
+  'sauces_liquids',
+];
+
+export function normalizeCategory(cat: string): ItemCategory {
+  if (cat === 'beef' || cat === 'mutton') return 'protein';
+  if (cat === 'condiments' || cat === 'snacks_bus') return 'sauces_liquids';
+  if (ORDERED_CATEGORY_KEYS.includes(cat as ItemCategory)) {
+    return cat as ItemCategory;
+  }
+  return 'spices';
+}
+
+export const CATEGORIES: Record<string, CategoryInfo> = {
   grains: {
     id: 'grains',
-    nameBn: 'চাল, ডাল ও আটা/ময়দা',
+    nameBn: 'চাল/দানা জাতীয়',
     nameEn: 'Grains & Pulses',
     colorClass: 'bg-amber-50 text-amber-900 border-amber-200',
     borderClass: 'border-amber-200',
   },
-  oils: {
-    id: 'oils',
-    nameBn: 'তেল, ঘি ও বাটার',
-    nameEn: 'Oils & Fats',
-    colorClass: 'bg-yellow-50 text-yellow-900 border-yellow-200',
-    borderClass: 'border-yellow-200',
+  protein: {
+    id: 'protein',
+    nameBn: 'আমিষ',
+    nameEn: 'Protein',
+    colorClass: 'bg-rose-50 text-rose-900 border-rose-200',
+    borderClass: 'border-rose-200',
   },
   vegetables: {
     id: 'vegetables',
-    nameBn: 'পেঁয়াজ, রসুন, আদা ও শাকসবজি',
-    nameEn: 'Vegetables & Aromatics',
+    nameBn: 'সবজি',
+    nameEn: 'Vegetables',
     colorClass: 'bg-emerald-50 text-emerald-900 border-emerald-200',
     borderClass: 'border-emerald-200',
   },
+  fruits: {
+    id: 'fruits',
+    nameBn: 'ফল',
+    nameEn: 'Fruits',
+    colorClass: 'bg-lime-50 text-lime-900 border-lime-200',
+    borderClass: 'border-lime-200',
+  },
   spices: {
     id: 'spices',
-    nameBn: 'মসলাপাতি ও শুকনা মশলা',
-    nameEn: 'Spices & Seasonings',
+    nameBn: 'মশলা',
+    nameEn: 'Spices',
     colorClass: 'bg-orange-50 text-orange-900 border-orange-200',
     borderClass: 'border-orange-200',
   },
+  oils: {
+    id: 'oils',
+    nameBn: 'তেল/ঘি',
+    nameEn: 'Oils & Ghee',
+    colorClass: 'bg-yellow-50 text-yellow-900 border-yellow-200',
+    borderClass: 'border-yellow-200',
+  },
   dairy_sweets: {
     id: 'dairy_sweets',
-    nameBn: 'দুধ, চিনি, মিষ্টি ও বাদাম/ডেজার্ট',
-    nameEn: 'Dairy, Sweets & Nuts',
+    nameBn: 'দুধ/বাদাম/মিষ্টি',
+    nameEn: 'Dairy, Nuts & Sweets',
     colorClass: 'bg-purple-50 text-purple-900 border-purple-200',
     borderClass: 'border-purple-200',
   },
-  condiments: {
-    id: 'condiments',
-    nameBn: 'সস, ভিনেগার, টকদই ও সালাদ',
-    nameEn: 'Sauces, Curd & Salad',
+  sauces_liquids: {
+    id: 'sauces_liquids',
+    nameBn: 'সস/তরল',
+    nameEn: 'Sauces & Liquids',
     colorClass: 'bg-cyan-50 text-cyan-900 border-cyan-200',
     borderClass: 'border-cyan-200',
   },
 };
+
+export function getCategoryForCommodity(name: string, fallback?: ItemCategory): ItemCategory {
+  const n = name.trim();
+  // 1. চাল/দানা জাতীয়
+  if (n.includes('চাল') || n.includes('ডাল') || n.includes('ময়দা') || n.includes('আটা') || n.includes('সুজি')) {
+    return 'grains';
+  }
+  // 2. আমিষ
+  if (n.includes('মাছ') || n.includes('মাংস') || n.includes('মুরগি') || n.includes('চিকেন') || 
+      n.includes('গরু') || n.includes('খাসি') || n.includes('ডিম') || n.includes('চিংড়ি') || n.includes('শুটকি')) {
+    return 'protein';
+  }
+  // 3. ফল
+  if (n.includes('লেবু') || n.includes('আমড়া') || n.includes('আপেল') || n.includes('নাশপাতি') || 
+      n.includes('আঙ্গুর') || n.includes('আনারস') || n.includes('কমলা')) {
+    return 'fruits';
+  }
+  // 4. তেল/ঘি
+  if (n.includes('তেল') || n.includes('ঘি') || n.includes('বাটার')) {
+    return 'oils';
+  }
+  // 5. সস/তরল
+  if (n.includes('সস') || n.includes('সিরকা') || n.includes('ভিনেগার') || n.includes('দই') || 
+      n.includes('জুস') || n.includes('কোক') || n.includes('পানি')) {
+    return 'sauces_liquids';
+  }
+  // 6. দুধ/বাদাম/মিষ্টি
+  if (n.includes('দুধ') || n.includes('চিনি') || n.includes('মিষ্টি') || n.includes('বাদাম') || 
+      n.includes('কিসমিস') || n.includes('মোরব্বা') || n.includes('বোখারা') || n.includes('ক্ষীর') || 
+      n.includes('কেক') || n.includes('বিস্কুট')) {
+    return 'dairy_sweets';
+  }
+  // 7. সবজি
+  if (n.includes('আলু') || n.includes('পেঁয়াজ') || n.includes('রসুন') || n.includes('আদা') || 
+      (n.includes('মরিচ') && n.includes('কাঁচা')) || n.includes('বেগুন') || n.includes('লাউ') || 
+      n.includes('পেঁপে') || n.includes('গাজর') || n.includes('কুমড়া') || n.includes('কলা') || 
+      n.includes('শিম') || n.includes('চিচিঙ্গা') || n.includes('ক্যাপসিকাম') || n.includes('টমেটো') || 
+      n.includes('শসা') || n.includes('পাতা')) {
+    return 'vegetables';
+  }
+  // 8. মশলা
+  if (n.includes('জিরা') || n.includes('হলুদ') || n.includes('মরিচ') || n.includes('লবণ') || 
+      n.includes('সল্ট') || n.includes('দারুচিনি') || n.includes('এলাচ') || n.includes('লবঙ্গ') || 
+      n.includes('মশলা') || n.includes('তেজপাতা') || n.includes('সরিষা') || n.includes('সেন্ট') || 
+      n.includes('কালার') || n.includes('জয়ত্রী') || n.includes('জয়ফল') || n.includes('ধনিয়া') || 
+      n.includes('মৌরি') || n.includes('রাধুনি') || (n.includes('চিনি') && n.includes('কাবাব'))) {
+    return 'spices';
+  }
+  return fallback || 'spices';
+}
 
 export interface MealItem {
   id: string;

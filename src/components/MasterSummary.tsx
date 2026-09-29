@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { AggregatedMasterItem, CATEGORIES, ItemCategory, UnitType } from '../types/meal';
+import { AggregatedMasterItem, CATEGORIES, ItemCategory, ORDERED_CATEGORY_KEYS, UnitType } from '../types/meal';
 import { formatCurrency, formatNumberBn } from '../utils/calculator';
 import { Search, ArrowUpDown, Plus, Edit2, Check, X, Layers, Users } from 'lucide-react';
 
@@ -231,7 +231,7 @@ export const MasterSummary: React.FC<MasterSummaryProps> = ({
                 onChange={(e) => setNewCategory(e.target.value as ItemCategory)}
                 className="w-full text-xs px-2.5 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-600 focus:bg-white text-slate-800"
               >
-                {(Object.keys(CATEGORIES) as ItemCategory[]).map((catKey) => (
+                {ORDERED_CATEGORY_KEYS.map((catKey) => (
                   <option key={catKey} value={catKey}>
                     {CATEGORIES[catKey].nameBn}
                   </option>
@@ -367,7 +367,7 @@ export const MasterSummary: React.FC<MasterSummaryProps> = ({
             সব উপাদান ({aggregatedItems.length})
           </button>
 
-          {(Object.keys(CATEGORIES) as ItemCategory[]).map((catKey) => {
+          {ORDERED_CATEGORY_KEYS.map((catKey) => {
             const cat = CATEGORIES[catKey];
             const count = aggregatedItems.filter(i => i.category === catKey).length;
             const isSelected = selectedCategory === catKey;

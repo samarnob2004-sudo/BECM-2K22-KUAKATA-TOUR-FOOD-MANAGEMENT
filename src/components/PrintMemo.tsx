@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { AggregatedMasterItem, CATEGORIES, ItemCategory } from '../types/meal';
+import { AggregatedMasterItem, CATEGORIES, ItemCategory, ORDERED_CATEGORY_KEYS } from '../types/meal';
 import { formatCurrency, formatNumberBn } from '../utils/calculator';
 import { Printer, Calendar, MapPin, Users, Download, Loader2 } from 'lucide-react';
 
@@ -133,7 +133,7 @@ export const PrintMemo: React.FC<PrintMemoProps> = ({
 
         {/* Grouped Items List by Category */}
         <div className="space-y-6">
-          {(Object.keys(CATEGORIES) as ItemCategory[]).map((catKey) => {
+          {ORDERED_CATEGORY_KEYS.map((catKey) => {
             const cat = CATEGORIES[catKey];
             const items = aggregatedItems.filter((i) => i.category === catKey);
             if (items.length === 0) return null;

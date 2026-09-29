@@ -1,5 +1,5 @@
 import React from 'react';
-import { AggregatedMasterItem, CATEGORIES, ItemCategory, Meal } from '../types/meal';
+import { AggregatedMasterItem, CATEGORIES, ItemCategory, ORDERED_CATEGORY_KEYS, Meal } from '../types/meal';
 import { formatCurrency, formatNumberBn } from '../utils/calculator';
 import { PieChart, TrendingUp, Award, Layers } from 'lucide-react';
 
@@ -16,8 +16,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   grandTotal,
   studentCount,
 }) => {
-  // Category breakdown calculation
-  const categoryStats = (Object.keys(CATEGORIES) as ItemCategory[]).map((catKey) => {
+  // Category breakdown calculation for the 8 official categories
+  const categoryStats = ORDERED_CATEGORY_KEYS.map((catKey) => {
     const info = CATEGORIES[catKey];
     const items = aggregatedItems.filter((i) => i.category === catKey);
     const totalCost = items.reduce((sum, i) => sum + i.totalCost, 0);
@@ -29,17 +29,15 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
       totalCost,
       itemCount: items.length,
       percentage,
-      color: catKey === 'snacks_bus' ? 'bg-teal-600' :
-             catKey === 'beef' ? 'bg-red-600' :
-             catKey === 'mutton' ? 'bg-amber-600' :
-             catKey === 'protein' ? 'bg-rose-500' :
+      color: catKey === 'protein' ? 'bg-rose-500' :
              catKey === 'grains' ? 'bg-amber-500' :
              catKey === 'oils' ? 'bg-yellow-500' :
              catKey === 'vegetables' ? 'bg-emerald-500' :
+             catKey === 'fruits' ? 'bg-lime-500' :
              catKey === 'spices' ? 'bg-orange-400' :
              catKey === 'dairy_sweets' ? 'bg-purple-500' : 'bg-cyan-500',
     };
-  }).sort((a, b) => b.totalCost - a.totalCost);
+  }).filter(c => c.itemCount > 0).sort((a, b) => b.totalCost - a.totalCost);
 
   // Meal breakdown
   const mealStats = meals.map((meal) => {

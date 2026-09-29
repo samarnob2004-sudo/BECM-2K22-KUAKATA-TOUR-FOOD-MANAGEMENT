@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ItemCategory, Meal, MealItem, UnitType } from './types/meal';
 import { recalculateAutoScaledMeals, getTourMealsData } from './data/defaultTourData';
-import { aggregateMasterItems } from './utils/calculator';
+import { aggregateMasterItems, normalizeItemIdentity } from './utils/calculator';
 import { Header, AppTab } from './components/Header';
 import { MetricCards } from './components/MetricCards';
 import { QuickActionBar } from './components/QuickActionBar';
@@ -19,9 +19,9 @@ import { PrintMemo } from './components/PrintMemo';
 import { ExportModal } from './components/ExportModal';
 import { AlertTriangle } from 'lucide-react';
 
-const STORAGE_KEY_MEALS = 'kuakata_tour_meals_v6';
-const STORAGE_KEY_OVERRIDES = 'kuakata_tour_price_overrides_v6';
-const STORAGE_KEY_STUDENTS = 'kuakata_tour_student_count_v6';
+const STORAGE_KEY_MEALS = 'kuakata_tour_meals_v7';
+const STORAGE_KEY_OVERRIDES = 'kuakata_tour_price_overrides_v7';
+const STORAGE_KEY_STUDENTS = 'kuakata_tour_student_count_v7';
 
 export default function App() {
   // Initialize state with LocalStorage support
@@ -128,13 +128,16 @@ export default function App() {
       [canonicalKey]: newPrice,
     }));
 
-    // Also update in meal items with this canonical key
+    // Also update in meal items with this canonical key or normalized identity
     setMeals((prevMeals) =>
       prevMeals.map((meal) => ({
         ...meal,
-        items: meal.items.map((item) =>
-          item.canonicalKey === canonicalKey ? { ...item, unitPrice: newPrice } : item
-        ),
+        items: meal.items.map((item) => {
+          const idn = normalizeItemIdentity(item);
+          return idn.key === canonicalKey || item.canonicalKey === canonicalKey
+            ? { ...item, unitPrice: newPrice }
+            : item;
+        }),
       }))
     );
   };
@@ -171,7 +174,8 @@ export default function App() {
           prevMeals.map((meal) => ({
             ...meal,
             items: meal.items.map((item) => {
-              const p = fetchedPrices[item.canonicalKey];
+              const idn = normalizeItemIdentity(item);
+              const p = fetchedPrices[idn.key] ?? fetchedPrices[item.canonicalKey];
               return p !== undefined && p > 0 ? { ...item, unitPrice: p } : item;
             }),
           }))
@@ -184,29 +188,30 @@ export default function App() {
     } catch (err) {
       console.warn('API error, applying verified catalog prices:', err);
       const fallbackCatalog: Record<string, number> = {
-        chicken: 260,
-        beef: 780,
-        mutton: 1150,
-        beef_mutton: 820,
+        chicken: 210,
+        beef: 750,
+        mutton: 1100,
         rui_fish: 380,
-        shrimp: 850,
-        egg: 12.5,
-        oil_soybean: 190,
-        oil_mustard: 260,
+        shrimp_small: 650,
+        shrimp_dried: 950,
+        egg: 12,
+        soybean_oil: 185,
+        mustard_oil: 280,
         ghee: 1400,
-        rice_miniket: 72,
-        rice_polao: 145,
-        rice_basmati: 185,
-        dal_masoor: 140,
+        rice_white: 65,
+        polao_rice: 140,
+        basmati_rice: 260,
+        lentil_mosur: 135,
+        lentil_mug: 160,
         potato: 35,
         onion: 75,
         garlic: 220,
         ginger: 240,
-        sugar: 135,
-        milk_liquid: 90,
-        muffin_cake_bus: 10,
-        juice_pack_bus: 10,
-        coke_2l: 140,
+        sugar: 130,
+        powder_milk: 880,
+        muffin_cake: 10,
+        juice_pack: 10,
+        coca_cola: 90,
       };
 
       setPriceOverrides((prev) => ({ ...prev, ...fallbackCatalog }));
@@ -214,7 +219,8 @@ export default function App() {
         prevMeals.map((meal) => ({
           ...meal,
           items: meal.items.map((item) => {
-            const p = fallbackCatalog[item.canonicalKey];
+            const idn = normalizeItemIdentity(item);
+            const p = fallbackCatalog[idn.key] ?? fallbackCatalog[item.canonicalKey];
             return p !== undefined ? { ...item, unitPrice: p } : item;
           }),
         }))
@@ -264,7 +270,8 @@ export default function App() {
 
       prevMeals.forEach((meal) => {
         meal.items.forEach((item) => {
-          if (item.canonicalKey === canonicalKey) {
+          const idn = normalizeItemIdentity(item);
+          if (idn.key === canonicalKey || item.canonicalKey === canonicalKey) {
             occurrences.push({ mealId: meal.id, itemId: item.id, currentAmount: item.amount });
             currentTotal += item.amount;
           }
@@ -295,7 +302,8 @@ export default function App() {
       return prevMeals.map((meal) => ({
         ...meal,
         items: meal.items.map((item) => {
-          if (item.canonicalKey === canonicalKey) {
+          const idn = normalizeItemIdentity(item);
+          if (idn.key === canonicalKey || item.canonicalKey === canonicalKey) {
             const scaled = Math.round(item.amount * ratio * 100) / 100;
             const newBase = countRatio > 0 ? scaled / countRatio : scaled;
             return { ...item, amount: scaled, baseAmount: newBase };

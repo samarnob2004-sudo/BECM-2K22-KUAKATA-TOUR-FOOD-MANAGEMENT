@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CATEGORIES, ItemCategory, Meal, MealItem, UnitType } from '../types/meal';
+import { CATEGORIES, ItemCategory, ORDERED_CATEGORY_KEYS, Meal, MealItem, UnitType } from '../types/meal';
 import { calculateItemCost, formatCurrency } from '../utils/calculator';
 import { Plus, Trash2, Calendar, Clock, UtensilsCrossed, Edit2, Check, X, Sparkles, Users } from 'lucide-react';
 
@@ -275,7 +275,7 @@ export const MealDetailView: React.FC<MealDetailViewProps> = ({
                   onChange={(e) => setNewCategory(e.target.value as ItemCategory)}
                   className="w-full text-xs px-2 py-1.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-600 text-slate-800"
                 >
-                  {(Object.keys(CATEGORIES) as ItemCategory[]).map((catKey) => (
+                  {ORDERED_CATEGORY_KEYS.map((catKey) => (
                     <option key={catKey} value={catKey}>
                       {CATEGORIES[catKey].nameBn}
                     </option>
