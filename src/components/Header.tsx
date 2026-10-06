@@ -8,10 +8,11 @@ import {
   Users,
   FileDown,
   Tag,
-  ChefHat
+  ChefHat,
+  Scale
 } from 'lucide-react';
 
-export type AppTab = 'summary' | 'meals' | 'rates' | 'special-dishes' | 'analytics' | 'print';
+export type AppTab = 'summary' | 'meals' | 'rates' | 'comparison' | 'special-dishes' | 'analytics' | 'print';
 
 interface HeaderProps {
   activeTab: AppTab;
@@ -90,6 +91,19 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Tag className={`w-3.5 h-3.5 ${activeTab === 'rates' ? 'text-emerald-700' : 'text-slate-400'}`} />
               <span>মূল্য তালিকা</span>
+            </button>
+
+            {/* Requested: দর তুলনা (Comparison System) */}
+            <button
+              onClick={() => setActiveTab('comparison')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
+                activeTab === 'comparison'
+                  ? 'bg-white text-emerald-800 shadow-xs border border-slate-200/60'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+              }`}
+            >
+              <Scale className={`w-3.5 h-3.5 ${activeTab === 'comparison' ? 'text-emerald-700' : 'text-slate-400'}`} />
+              <span>দর তুলনা</span>
             </button>
 
             {/* Requested: আইটেম ভিত্তিক ক্যালকুলেটর (পায়েস ও জর্দা) */}
@@ -217,6 +231,14 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
           >
             মূল্য তালিকা
+          </button>
+          <button
+            onClick={() => setActiveTab('comparison')}
+            className={`px-3 py-1.5 text-xs font-semibold rounded-lg whitespace-nowrap transition-colors ${
+              activeTab === 'comparison' ? 'bg-emerald-700 text-white shadow-2xs' : 'text-slate-600 bg-slate-50'
+            }`}
+          >
+            দর তুলনা
           </button>
           <button
             onClick={() => setActiveTab('special-dishes')}

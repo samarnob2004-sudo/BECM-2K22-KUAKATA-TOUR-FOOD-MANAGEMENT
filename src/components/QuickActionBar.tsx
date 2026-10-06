@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, Trash2, Eraser, RefreshCw, AlertTriangle, CheckCircle, Info } from 'lucide-react';
+import { Sparkles, Trash2, Eraser, RefreshCw, AlertTriangle, CheckCircle, Info, Scale } from 'lucide-react';
 
 interface QuickActionBarProps {
   onFetchOnlinePrices: () => Promise<void>;
@@ -8,6 +8,7 @@ interface QuickActionBarProps {
   onClearAllQuantities: () => void;
   statusMessage: string | null;
   onDismissStatus: () => void;
+  onNavigateToComparison?: () => void;
 }
 
 export const QuickActionBar: React.FC<QuickActionBarProps> = ({
@@ -17,6 +18,7 @@ export const QuickActionBar: React.FC<QuickActionBarProps> = ({
   onClearAllQuantities,
   statusMessage,
   onDismissStatus,
+  onNavigateToComparison,
 }) => {
   const [confirmModal, setConfirmModal] = useState<'prices' | 'quantities' | null>(null);
 
@@ -88,6 +90,19 @@ export const QuickActionBar: React.FC<QuickActionBarProps> = ({
             <Eraser className="w-3.5 h-3.5 text-slate-500 hover:text-amber-700" />
             <span>সকল পরিমাণ মুছুন</span>
           </button>
+
+          {/* Button 4: Navigate to Comparison System */}
+          {onNavigateToComparison && (
+            <button
+              type="button"
+              onClick={onNavigateToComparison}
+              className="px-3.5 py-2 text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200/80 rounded-xl transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer"
+              title="নতুন বাজার কোটেশন ও দর তুলনা সিস্টেমে যান"
+            >
+              <Scale className="w-3.5 h-3.5 text-indigo-600" />
+              <span>বাজার দর তুলনা (৫০ আইটেম)</span>
+            </button>
+          )}
         </div>
       </div>
 

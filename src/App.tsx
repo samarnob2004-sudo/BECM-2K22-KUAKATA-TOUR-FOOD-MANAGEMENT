@@ -13,15 +13,18 @@ import { QuickActionBar } from './components/QuickActionBar';
 import { MasterSummary } from './components/MasterSummary';
 import { MealDetailView } from './components/MealDetailView';
 import { RateListView } from './components/RateListView';
+import { ComparisonView } from './components/ComparisonView';
 import { SpecialDishesView } from './components/SpecialDishesView';
 import { AnalyticsView } from './components/AnalyticsView';
 import { PrintMemo } from './components/PrintMemo';
 import { ExportModal } from './components/ExportModal';
 import { AlertTriangle } from 'lucide-react';
+import { ComparisonQuoteItem } from './types/comparison';
 
 const STORAGE_KEY_MEALS = 'kuakata_tour_meals_v7';
 const STORAGE_KEY_OVERRIDES = 'kuakata_tour_price_overrides_v7';
 const STORAGE_KEY_STUDENTS = 'kuakata_tour_student_count_v7';
+const STORAGE_KEY_COMPARISON = 'kuakata_tour_comparison_items_v1';
 
 export default function App() {
   // Initialize state with LocalStorage support
@@ -62,6 +65,21 @@ export default function App() {
       console.error('Failed to load overrides from localStorage', e);
     }
     return {};
+  });
+
+  const [savedComparisonItems, setSavedComparisonItems] = useState<ComparisonQuoteItem[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_COMPARISON);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load comparison items from localStorage', e);
+    }
+    return [];
   });
 
   const [activeTab, setActiveTab] = useState<AppTab>('summary');
@@ -245,6 +263,36 @@ export default function App() {
       }))
     );
     setStatusMessage('সকল পণ্যের দাম মুছে ০ টাকা করা হয়েছে। এখন আপনি প্রতিটি পণ্যের কাস্টম দর বসাতে পারেন।');
+  };
+
+  // Handler: Save comparison items to localStorage
+  const handleSaveComparisonItems = (newItems: ComparisonQuoteItem[]) => {
+    setSavedComparisonItems(newItems);
+    try {
+      localStorage.setItem(STORAGE_KEY_COMPARISON, JSON.stringify(newItems));
+    } catch (e) {
+      console.error('Failed to save comparison items to localStorage', e);
+    }
+  };
+
+  // Handler: Apply comparison rates to Tour Master Budget
+  const handleApplyComparisonRatesToBudget = (rates: Record<string, number>) => {
+    setPriceOverrides((prev) => ({
+      ...prev,
+      ...rates,
+    }));
+
+    setMeals((prevMeals) =>
+      prevMeals.map((meal) => ({
+        ...meal,
+        items: meal.items.map((item) => {
+          const idn = normalizeItemIdentity(item);
+          const newPrice = rates[idn.key] ?? rates[item.canonicalKey];
+          return newPrice !== undefined ? { ...item, unitPrice: newPrice } : item;
+        }),
+      }))
+    );
+    setStatusMessage('কোটেশন বাজার দর সফলভাবে মূল ৬ বেলার টুর বাজেট ও খাদ্য তালিকায় কার্যকর করা হয়েছে।');
   };
 
   // Handler: Clear all quantities (set to 0)
@@ -459,6 +507,7 @@ export default function App() {
             onClearAllQuantities={handleClearAllQuantities}
             statusMessage={statusMessage}
             onDismissStatus={() => setStatusMessage(null)}
+            onNavigateToComparison={() => setActiveTab('comparison')}
           />
         )}
 
@@ -507,6 +556,18 @@ export default function App() {
             onFetchOnlinePrices={handleFetchOnlinePrices}
             isFetchingOnline={isFetchingOnline}
             onClearAllPrices={handleClearAllPrices}
+            onNavigateToComparison={() => setActiveTab('comparison')}
+          />
+        )}
+
+        {/* Tab: Requested "দর তুলনা (Comparison System)" */}
+        {activeTab === 'comparison' && (
+          <ComparisonView
+            aggregatedItems={aggregatedItems}
+            studentCount={studentCount}
+            onApplyRatesToBudget={handleApplyComparisonRatesToBudget}
+            savedComparisonItems={savedComparisonItems}
+            onSaveComparisonItems={handleSaveComparisonItems}
           />
         )}
 

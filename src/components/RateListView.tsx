@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { AggregatedMasterItem, CATEGORIES, ItemCategory, ORDERED_CATEGORY_KEYS } from '../types/meal';
 import { formatCurrency, formatNumberBn } from '../utils/calculator';
-import { Search, Tag, RefreshCw, X, Sparkles, Trash2, ArrowUpDown, Layers, LayoutGrid, List } from 'lucide-react';
+import { Search, Tag, RefreshCw, X, Sparkles, Trash2, ArrowUpDown, Layers, LayoutGrid, List, Scale } from 'lucide-react';
 
 interface RateListViewProps {
   aggregatedItems: AggregatedMasterItem[];
@@ -9,6 +9,7 @@ interface RateListViewProps {
   onFetchOnlinePrices: () => Promise<void>;
   isFetchingOnline: boolean;
   onClearAllPrices: () => void;
+  onNavigateToComparison?: () => void;
 }
 
 export const RateListView: React.FC<RateListViewProps> = ({
@@ -17,6 +18,7 @@ export const RateListView: React.FC<RateListViewProps> = ({
   onFetchOnlinePrices,
   isFetchingOnline,
   onClearAllPrices,
+  onNavigateToComparison,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -80,6 +82,17 @@ export const RateListView: React.FC<RateListViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2 self-start md:self-auto flex-wrap">
+          {onNavigateToComparison && (
+            <button
+              onClick={onNavigateToComparison}
+              className="px-3.5 py-2 text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
+              title="নতুন বাজার কোটেশন ও দর তুলনা সিস্টেমে যান"
+            >
+              <Scale className="w-3.5 h-3.5" />
+              <span>বাজার দর তুলনা (৫০ আইটেম)</span>
+            </button>
+          )}
+
           <button
             onClick={onFetchOnlinePrices}
             disabled={isFetchingOnline}
