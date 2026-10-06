@@ -14,6 +14,11 @@ export interface ComparisonQuoteItem {
   standardUnitPrice: number; // Converted equivalent price per standard unit (e.g. 50 / 100g = 500 / kg)
   notes?: string;
   isCustom?: boolean;
+  customRequiredQty?: number; // User editable tour required quantity
+  customRequiredUnit?: UnitType; // User editable tour required unit
+  customBudgetRate?: number; // User editable tour budget rate
+  customCurrentTotal?: number; // Optional user editable current total cost
+  customQuotedTotal?: number; // Optional user editable quoted total cost
 }
 
 export interface ComparisonSummary {

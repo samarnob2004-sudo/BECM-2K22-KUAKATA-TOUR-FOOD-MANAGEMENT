@@ -567,6 +567,7 @@ export default function App() {
             studentCount={studentCount}
             priceOverrides={priceOverrides}
             onUpdateBudgetPrice={handleUpdateMasterPrice}
+            onUpdateMasterQuantity={handleUpdateMasterQuantity}
             onApplyRatesToBudget={handleApplyComparisonRatesToBudget}
             savedComparisonItems={savedComparisonItems}
             onSaveComparisonItems={handleSaveComparisonItems}

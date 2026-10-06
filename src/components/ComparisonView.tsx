@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { ComparisonQuoteItem, QuoteUnitType } from '../types/comparison';
-import { AggregatedMasterItem, CATEGORIES, ItemCategory, ORDERED_CATEGORY_KEYS } from '../types/meal';
+import { AggregatedMasterItem, CATEGORIES, ItemCategory, ORDERED_CATEGORY_KEYS, UnitType } from '../types/meal';
 import { calculateStandardUnitPrice, INITIAL_COMPARISON_ITEMS } from '../data/defaultComparisonData';
 import { formatCurrency, formatNumberBn } from '../utils/calculator';
 import { 
@@ -9,20 +9,19 @@ import {
   Plus, 
   RotateCcw, 
   Download, 
-  Printer, 
   CheckCircle2, 
   TrendingDown, 
   TrendingUp, 
   Minus, 
   Edit3, 
   Trash2, 
-  ArrowRight,
-  Filter,
-  Check,
-  AlertCircle,
-  HelpCircle,
-  Layers,
-  Sparkles
+  Check, 
+  AlertCircle, 
+  HelpCircle, 
+  Layers, 
+  Sparkles,
+  Settings2,
+  X
 } from 'lucide-react';
 
 const BASELINE_BUDGET_RATES: Record<string, number> = {
@@ -83,6 +82,7 @@ interface ComparisonViewProps {
   studentCount: number;
   priceOverrides?: Record<string, number>;
   onUpdateBudgetPrice?: (canonicalKey: string, newPrice: number) => void;
+  onUpdateMasterQuantity?: (canonicalKey: string, newQty: number) => void;
   onApplyRatesToBudget: (rates: Record<string, number>) => void;
   savedComparisonItems?: ComparisonQuoteItem[];
   onSaveComparisonItems?: (items: ComparisonQuoteItem[]) => void;
@@ -93,6 +93,7 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
   studentCount,
   priceOverrides = {},
   onUpdateBudgetPrice,
+  onUpdateMasterQuantity,
   onApplyRatesToBudget,
   savedComparisonItems,
   onSaveComparisonItems,
@@ -108,36 +109,6 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
   // Local fallback state for budget price overrides if needed
   const [localBudgetPrices, setLocalBudgetPrices] = useState<Record<string, number>>({});
 
-  // Helper to get effective budget rate for an item
-  const getItemBudgetRate = (quoteItem: ComparisonQuoteItem): number => {
-    if (localBudgetPrices[quoteItem.canonicalKey] !== undefined) {
-      return localBudgetPrices[quoteItem.canonicalKey];
-    }
-    if (priceOverrides && priceOverrides[quoteItem.canonicalKey] !== undefined) {
-      return priceOverrides[quoteItem.canonicalKey];
-    }
-    const tourItem = findMatchingTourItem(quoteItem);
-    if (tourItem && tourItem.unitPrice > 0) {
-      return tourItem.unitPrice;
-    }
-    return BASELINE_BUDGET_RATES[quoteItem.canonicalKey] || 0;
-  };
-
-  // Handler: Update Current Tour Budget Rate for an item
-  const handleBudgetPriceChange = (quoteItem: ComparisonQuoteItem, valStr: string) => {
-    const val = parseFloat(valStr);
-    const validRate = isNaN(val) ? 0 : Math.max(0, val);
-
-    setLocalBudgetPrices((prev) => ({
-      ...prev,
-      [quoteItem.canonicalKey]: validRate,
-    }));
-
-    if (onUpdateBudgetPrice) {
-      onUpdateBudgetPrice(quoteItem.canonicalKey, validRate);
-    }
-  };
-
   // Filters & Search
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -146,6 +117,7 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
   // Modals & Messages
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
+  const [editingItemModal, setEditingItemModal] = useState<ComparisonQuoteItem | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // New item form state
@@ -153,6 +125,8 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
   const [newItemCategory, setNewItemCategory] = useState<ItemCategory>('spices');
   const [newItemPrice, setNewItemPrice] = useState<string>('');
   const [newItemUnit, setNewItemUnit] = useState<QuoteUnitType>('কেজি');
+  const [newItemBudgetRate, setNewItemBudgetRate] = useState<string>('');
+  const [newItemRequiredQty, setNewItemRequiredQty] = useState<string>('');
   const [newItemNotes, setNewItemNotes] = useState('');
 
   // Map of tour aggregated items by canonicalKey for fast lookup
@@ -176,7 +150,59 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
     });
   };
 
-  // Sync to parent/storage if prop provided
+  // Helper getters for effective values of an item
+  const getItemBudgetRate = (quoteItem: ComparisonQuoteItem): number => {
+    if (quoteItem.customBudgetRate !== undefined) {
+      return quoteItem.customBudgetRate;
+    }
+    if (localBudgetPrices[quoteItem.canonicalKey] !== undefined) {
+      return localBudgetPrices[quoteItem.canonicalKey];
+    }
+    if (priceOverrides && priceOverrides[quoteItem.canonicalKey] !== undefined) {
+      return priceOverrides[quoteItem.canonicalKey];
+    }
+    const tourItem = findMatchingTourItem(quoteItem);
+    if (tourItem && tourItem.unitPrice > 0) {
+      return tourItem.unitPrice;
+    }
+    return BASELINE_BUDGET_RATES[quoteItem.canonicalKey] || 0;
+  };
+
+  const getEffectiveQuantity = (quoteItem: ComparisonQuoteItem): number => {
+    if (quoteItem.customRequiredQty !== undefined) {
+      return quoteItem.customRequiredQty;
+    }
+    const tourItem = findMatchingTourItem(quoteItem);
+    return tourItem ? tourItem.totalQuantity : 0;
+  };
+
+  const getEffectiveUnit = (quoteItem: ComparisonQuoteItem): UnitType => {
+    if (quoteItem.customRequiredUnit) {
+      return quoteItem.customRequiredUnit;
+    }
+    const tourItem = findMatchingTourItem(quoteItem);
+    return tourItem?.unit || quoteItem.standardUnit;
+  };
+
+  const getEffectiveCurrentCost = (quoteItem: ComparisonQuoteItem): number => {
+    if (quoteItem.customCurrentTotal !== undefined) {
+      return quoteItem.customCurrentTotal;
+    }
+    const qty = getEffectiveQuantity(quoteItem);
+    const rate = getItemBudgetRate(quoteItem);
+    return Math.round(qty * rate);
+  };
+
+  const getEffectiveQuotedCost = (quoteItem: ComparisonQuoteItem): number => {
+    if (quoteItem.customQuotedTotal !== undefined) {
+      return quoteItem.customQuotedTotal;
+    }
+    const qty = getEffectiveQuantity(quoteItem);
+    const rate = quoteItem.standardUnitPrice;
+    return Math.round(qty * rate);
+  };
+
+  // Sync to parent / localStorage
   const updateItemsAndPersist = (newItems: ComparisonQuoteItem[]) => {
     setItems(newItems);
     if (onSaveComparisonItems) {
@@ -184,7 +210,31 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
     }
   };
 
-  // Handler: Change quoted price or unit inline
+  // 1. Column Edit: Item Name
+  const handleNameChange = (id: string, newName: string) => {
+    const updated = items.map((item) =>
+      item.id === id ? { ...item, name: newName } : item
+    );
+    updateItemsAndPersist(updated);
+  };
+
+  // 2. Column Edit: Category
+  const handleCategoryChange = (id: string, newCat: ItemCategory) => {
+    const updated = items.map((item) =>
+      item.id === id ? { ...item, category: newCat } : item
+    );
+    updateItemsAndPersist(updated);
+  };
+
+  // 3. Column Edit: Notes
+  const handleNotesChange = (id: string, newNotes: string) => {
+    const updated = items.map((item) =>
+      item.id === id ? { ...item, notes: newNotes } : item
+    );
+    updateItemsAndPersist(updated);
+  };
+
+  // 4. Column Edit: Quoted Price & Unit
   const handleInlinePriceChange = (id: string, priceVal: number, unitVal?: QuoteUnitType) => {
     const updated = items.map((item) => {
       if (item.id === id) {
@@ -198,6 +248,7 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
           standardUnit,
           standardUnitPrice,
           quotedQuantityNote: `${validPrice} টাকা / ${targetUnit}`,
+          customQuotedTotal: undefined, // Recalculate
         };
       }
       return item;
@@ -205,22 +256,154 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
     updateItemsAndPersist(updated);
   };
 
-  // Handler: Delete an item
+  // 5. Column Edit: Standard Unit Price & Unit
+  const handleStandardPriceChange = (id: string, standardVal: number, standardUnitVal?: UnitType) => {
+    const updated = items.map((item) => {
+      if (item.id === id) {
+        const standardUnitPrice = Math.max(0, standardVal);
+        const standardUnit = standardUnitVal || item.standardUnit;
+        let quotedPrice = standardUnitPrice;
+        if (item.quotedUnit === '১০০ গ্রাম') {
+          quotedPrice = Math.round(standardUnitPrice / 10);
+        } else if (item.quotedUnit === '২৫০ গ্রাম') {
+          quotedPrice = Math.round(standardUnitPrice / 4);
+        } else if (item.quotedUnit === 'গ্রাম') {
+          quotedPrice = Number((standardUnitPrice / 1000).toFixed(2));
+        }
+        return {
+          ...item,
+          standardUnitPrice,
+          standardUnit,
+          quotedPrice,
+          quotedQuantityNote: `${quotedPrice} টাকা / ${item.quotedUnit}`,
+          customQuotedTotal: undefined,
+        };
+      }
+      return item;
+    });
+    updateItemsAndPersist(updated);
+  };
+
+  // 6. Column Edit: Current Tour Budget Rate
+  const handleBudgetPriceChange = (quoteItem: ComparisonQuoteItem, valStr: string) => {
+    const val = parseFloat(valStr);
+    const validRate = isNaN(val) ? 0 : Math.max(0, val);
+
+    setLocalBudgetPrices((prev) => ({
+      ...prev,
+      [quoteItem.canonicalKey]: validRate,
+    }));
+
+    const updated = items.map((item) => {
+      if (item.id === quoteItem.id) {
+        return {
+          ...item,
+          customBudgetRate: validRate,
+          customCurrentTotal: undefined,
+        };
+      }
+      return item;
+    });
+    updateItemsAndPersist(updated);
+
+    if (onUpdateBudgetPrice) {
+      onUpdateBudgetPrice(quoteItem.canonicalKey, validRate);
+    }
+  };
+
+  // 7. Column Edit: Tour Required Quantity & Unit
+  const handleRequiredQtyChange = (quoteItem: ComparisonQuoteItem, valStr: string) => {
+    const val = parseFloat(valStr);
+    const validQty = isNaN(val) ? 0 : Math.max(0, val);
+
+    const updated = items.map((item) => {
+      if (item.id === quoteItem.id) {
+        return {
+          ...item,
+          customRequiredQty: validQty,
+          customCurrentTotal: undefined,
+          customQuotedTotal: undefined,
+        };
+      }
+      return item;
+    });
+    updateItemsAndPersist(updated);
+
+    if (onUpdateMasterQuantity) {
+      const tourItem = findMatchingTourItem(quoteItem);
+      if (tourItem) {
+        onUpdateMasterQuantity(tourItem.canonicalKey, validQty);
+      }
+    }
+  };
+
+  const handleRequiredUnitChange = (id: string, newUnit: UnitType) => {
+    const updated = items.map((item) =>
+      item.id === id ? { ...item, customRequiredUnit: newUnit } : item
+    );
+    updateItemsAndPersist(updated);
+  };
+
+  // 8. Column Edit: Current Total Cost (Manual Override)
+  const handleCurrentTotalChange = (quoteItem: ComparisonQuoteItem, valStr: string) => {
+    const val = parseFloat(valStr);
+    const validTotal = isNaN(val) ? 0 : Math.max(0, val);
+    const qty = getEffectiveQuantity(quoteItem);
+
+    const updated = items.map((item) => {
+      if (item.id === quoteItem.id) {
+        return {
+          ...item,
+          customCurrentTotal: validTotal,
+          customBudgetRate: qty > 0 ? Math.round(validTotal / qty) : item.customBudgetRate,
+        };
+      }
+      return item;
+    });
+    updateItemsAndPersist(updated);
+
+    if (qty > 0 && onUpdateBudgetPrice) {
+      onUpdateBudgetPrice(quoteItem.canonicalKey, Math.round(validTotal / qty));
+    }
+  };
+
+  // 9. Column Edit: Quoted Total Cost (Manual Override)
+  const handleQuotedTotalChange = (quoteItem: ComparisonQuoteItem, valStr: string) => {
+    const val = parseFloat(valStr);
+    const validTotal = isNaN(val) ? 0 : Math.max(0, val);
+    const qty = getEffectiveQuantity(quoteItem);
+
+    const updated = items.map((item) => {
+      if (item.id === quoteItem.id) {
+        const newStandardRate = qty > 0 ? Math.round(validTotal / qty) : item.standardUnitPrice;
+        return {
+          ...item,
+          customQuotedTotal: validTotal,
+          standardUnitPrice: newStandardRate,
+        };
+      }
+      return item;
+    });
+    updateItemsAndPersist(updated);
+  };
+
+  // Delete an item
   const handleDeleteItem = (id: string) => {
     const updated = items.filter((item) => item.id !== id);
     updateItemsAndPersist(updated);
-    showToast('আইটেমটি তুলনা তালিকা থেকে অপসারন করা হয়েছে');
+    showToast('আইটেমটি তালিকা থেকে সরানো হয়েছে');
   };
 
-  // Handler: Reset to initial user-provided quote list
+  // Reset to initial user-provided quote list
   const handleResetToDefault = () => {
-    if (window.confirm('আপনি কি ইউজারের প্রদত্ত মূল বাজার কোটেশন তালিকায় রিসেট করতে চান?')) {
+    if (window.confirm('আপনি কি ইউজারের প্রদত্ত মূল বাজার কোটেশন তালিকায় রিসেট করতে চান? সকল কাস্টম এডিট ডিফল্টে ফিরে যাবে।')) {
+      setLocalBudgetPrices({});
       updateItemsAndPersist(INITIAL_COMPARISON_ITEMS);
       showToast('মূল বাজার কোটেশন দর পুনরায় লোড করা হয়েছে');
     }
   };
 
-  // Handler: Add new custom item
+  // Add new item
   const handleAddNewItem = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newItemName.trim()) return;
@@ -228,6 +411,8 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
     const priceNum = parseFloat(newItemPrice) || 0;
     const { standardUnit, standardUnitPrice } = calculateStandardUnitPrice(priceNum, newItemUnit);
     const key = `custom_${Date.now()}`;
+    const budgetRateNum = parseFloat(newItemBudgetRate) || 0;
+    const qtyNum = parseFloat(newItemRequiredQty) || 0;
 
     const newItem: ComparisonQuoteItem = {
       id: `cmp_${Date.now()}`,
@@ -239,6 +424,8 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
       quotedQuantityNote: `${priceNum} টাকা / ${newItemUnit}`,
       standardUnit,
       standardUnitPrice,
+      customBudgetRate: budgetRateNum > 0 ? budgetRateNum : undefined,
+      customRequiredQty: qtyNum > 0 ? qtyNum : undefined,
       notes: newItemNotes.trim() || undefined,
       isCustom: true,
     };
@@ -248,12 +435,14 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
 
     setNewItemName('');
     setNewItemPrice('');
+    setNewItemBudgetRate('');
+    setNewItemRequiredQty('');
     setNewItemNotes('');
     setIsAddModalOpen(false);
     showToast(`'${newItem.name}' সফলভাবে যুক্ত হয়েছে`);
   };
 
-  // Handler: Apply comparison rates to Tour Master Budget
+  // Apply comparison rates to Tour Master Budget
   const handleApplyToTourBudget = () => {
     const overridesToApply: Record<string, number> = {};
     let count = 0;
@@ -267,7 +456,7 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
 
     onApplyRatesToBudget(overridesToApply);
     setIsApplyModalOpen(false);
-    showToast(`কোটেশনের ${count}টি দর সফলভাবে মূল টুর বাজেটে কার্যকর করা হয়েছে!`);
+    showToast(`কোটেশনের ${count}টি দর সফলভাবে মূল টুর বাজেটে প্রয়োগ করা হয়েছে!`);
   };
 
   const showToast = (msg: string) => {
@@ -288,18 +477,19 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
 
     items.forEach((item) => {
       const tourItem = findMatchingTourItem(item);
+      const qty = getEffectiveQuantity(item);
       const currentRate = getItemBudgetRate(item);
       const quotedRate = item.standardUnitPrice;
+      const currentCost = getEffectiveCurrentCost(item);
+      const quotedCost = getEffectiveQuotedCost(item);
 
-      if (tourItem) {
+      if (qty > 0 || tourItem) {
         matchedTourItems++;
-        const requiredQty = tourItem.totalQuantity;
-        const currentCost = requiredQty * currentRate;
-        const quotedCost = requiredQty * quotedRate;
-
         totalCurrentCost += currentCost;
         totalQuotedCost += quotedCost;
+      }
 
+      if (currentRate > 0) {
         if (quotedRate < currentRate) {
           cheaperCount++;
         } else if (quotedRate > currentRate) {
@@ -308,14 +498,7 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
           sameCount++;
         }
       } else {
-        // Compare with baseline default if available
-        if (currentRate > 0) {
-          if (quotedRate < currentRate) cheaperCount++;
-          else if (quotedRate > currentRate) expensiveCount++;
-          else sameCount++;
-        } else {
-          sameCount++;
-        }
+        sameCount++;
       }
     });
 
@@ -342,8 +525,9 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
       const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (item.notes && item.notes.toLowerCase().includes(searchQuery.toLowerCase()));
 
-      const tourItem = findMatchingTourItem(item);
       const currentRate = getItemBudgetRate(item);
+      const qty = getEffectiveQuantity(item);
+      const tourItem = findMatchingTourItem(item);
       let matchesStatus = true;
 
       if (statusFilter === 'savings') {
@@ -351,7 +535,7 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
       } else if (statusFilter === 'extra') {
         matchesStatus = currentRate > 0 ? item.standardUnitPrice > currentRate : false;
       } else if (statusFilter === 'tour_needed') {
-        matchesStatus = !!tourItem;
+        matchesStatus = qty > 0 || !!tourItem;
       }
 
       return matchesCategory && matchesSearch && matchesStatus;
@@ -370,19 +554,21 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
       'বর্তমান টুর রেট (টাকা)',
       'পার্থক্য (টাকা)',
       'টুরে প্রয়োজন',
+      'প্রয়োজনীয় একক',
       'বর্তমান মোট খরচ',
       'কোটেশনে মোট খরচ',
       'সাশ্রয়/অতিরিক্ত',
+      'নোট',
     ];
 
     const rows = filteredItems.map((item, idx) => {
-      const tourItem = findMatchingTourItem(item);
       const currentRate = getItemBudgetRate(item);
       const diff = currentRate > 0 ? item.standardUnitPrice - currentRate : 0;
-      const qty = tourItem ? `${tourItem.totalQuantity} ${tourItem.unit}` : 'টুরে নেই';
-      const curCost = tourItem ? tourItem.totalQuantity * currentRate : 0;
-      const quoCost = tourItem ? tourItem.totalQuantity * item.standardUnitPrice : 0;
-      const saving = tourItem ? curCost - quoCost : 0;
+      const qty = getEffectiveQuantity(item);
+      const unit = getEffectiveUnit(item);
+      const curCost = getEffectiveCurrentCost(item);
+      const quoCost = getEffectiveQuotedCost(item);
+      const saving = curCost - quoCost;
 
       return [
         idx + 1,
@@ -393,10 +579,12 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
         item.standardUnitPrice,
         currentRate || 'প্রযোজ্য নয়',
         diff,
-        `"${qty}"`,
+        qty,
+        `"${unit}"`,
         curCost,
         quoCost,
         saving,
+        `"${item.notes || ''}"`,
       ].join(',');
     });
 
@@ -415,7 +603,7 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed top-20 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-lg border border-slate-700 flex items-center gap-2.5 animate-in fade-in slide-in-from-top duration-200">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
           <span className="text-xs font-medium">{toastMessage}</span>
         </div>
       )}
@@ -427,15 +615,16 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
             <Scale className="w-3.5 h-3.5" />
             <span>বাজার দর যাচাই ও তুলনামূলক বিশ্লেষণ</span>
           </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white mt-1 tracking-tight flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-bold text-white mt-1 tracking-tight flex items-center gap-2 flex-wrap">
             <span>কোটেশন দর বনাম বর্তমান বাজেট তুলনা</span>
-            <span className="text-xs bg-emerald-500/20 text-emerald-300 font-semibold px-2.5 py-0.5 rounded-full border border-emerald-500/30">
-              ৫০টি আইটেম সক্রিয়
+            <span className="text-2xs bg-emerald-500/20 text-emerald-300 font-semibold px-2.5 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
+              <Edit3 className="w-3 h-3 text-emerald-400" />
+              <span>প্রতিটি কলাম এডিটেবল</span>
             </span>
           </h1>
           <p className="text-slate-300 text-xs sm:text-sm mt-1 max-w-3xl leading-relaxed">
-            ইউজারের প্রদত্ত নতুন বাজার কোটেশনের সাথে বর্তমান টুর বাজেটের আইটেমভিত্তিক পূর্ণাঙ্গ তুলনা। 
-            যেকোনো দর সরাসরি এডিট ও পরিবর্তন করুন এবং প্রয়োজন অনুযায়ী এক ক্লিকে মূল টুর বাজেটে প্রয়োগ করুন।
+            ইউজারের প্রদত্ত বাজার কোটেশন ও টুর বাজেটের পূর্ণাঙ্গ তুলনা। 
+            <strong> নাম, ক্যাটাগরি, কোটেশন দর, একক, বর্তমান বাজেট রেট, প্রয়োজনীয় পরিমাণ ও মোট খরচ</strong> — টেবিলের প্রতিটি কলাম সরাসরি পরিবর্তনযোগ্য।
           </p>
         </div>
 
@@ -493,7 +682,7 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
             <span className="text-xs text-slate-500 font-medium">টি খাদ্য উপাদান</span>
           </div>
           <div className="mt-1 text-2xs text-slate-500 flex items-center gap-1">
-            <span>টুরে সরাসরি অন্তর্ভুক্ত:</span>
+            <span>টুরে প্রয়োজন চিহ্নিত:</span>
             <span className="font-semibold text-emerald-700 font-mono">{metrics.matchedTourItems} টি</span>
           </div>
         </div>
@@ -501,8 +690,8 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
         {/* Card 2: Current Tour Budget on these items */}
         <div className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-2xs">
           <div className="text-2xs font-semibold text-slate-500 uppercase tracking-wider flex items-center justify-between">
-            <span>বর্তমান বাজেটে খরচ</span>
-            <span className="text-slate-400 text-xs">১২০ জনের</span>
+            <span>বর্তমান বাজেটে মোট খরচ</span>
+            <span className="text-slate-400 text-xs">{studentCount} জনের</span>
           </div>
           <div className="mt-2 flex items-baseline gap-1">
             <span className="text-xs font-semibold text-slate-400">৳</span>
@@ -668,42 +857,94 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
         </div>
       </div>
 
-      {/* Comparison Items Table */}
+      {/* Comparison Items Table (All Columns Editable) */}
       <div className="bg-white rounded-xl border border-slate-200/90 shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="p-3 bg-slate-50/80 border-b border-slate-200 text-2xs text-slate-600 flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-1.5 font-medium">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span className="font-semibold text-slate-800">টেবিলের প্রতিটি কলাম এডিটেবল:</span>
+            <span>নাম, ক্যাটাগরি, কোটেশন রেট, মানক দর, বাজেট দর, পরিমাণ বা মোট খরচ সরাসরি ইনপুটে ক্লিক করে এডিট করুন।</span>
+          </div>
+          <span className="text-3xs text-slate-400">
+            পরিবর্তনসমূহ স্বয়ংক্রিয়ভাবে সংরক্ষিত থাকে
+          </span>
+        </div>
+
+        <div className="overflow-x-auto scrollbar-thin">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="bg-slate-50 text-slate-600 border-b border-slate-200 text-2xs uppercase tracking-wider font-semibold">
-                <th className="py-3 px-3 w-12 text-center">#</th>
-                <th className="py-3 px-3 min-w-[170px]">খাদ্য উপাদান ও ক্যাটাগরি</th>
-                <th className="py-3 px-3 min-w-[200px] text-center bg-indigo-50/50 text-indigo-900 border-x border-indigo-100/60">
-                  প্রাপ্ত কোটেশন দর (এডিটেবল)
-                </th>
-                <th className="py-3 px-3 min-w-[120px] text-right">
-                  প্রতি মানক একক দর
-                </th>
-                <th className="py-3 px-3 min-w-[200px] text-center bg-emerald-50/70 text-emerald-950 border-x border-emerald-100/80">
-                  <div className="flex items-center justify-center gap-1.5">
-                    <Edit3 className="w-3.5 h-3.5 text-emerald-700" />
-                    <span>বর্তমান টুর বাজেট দর (এডিটেবল)</span>
+              <tr className="bg-slate-50 text-slate-700 border-b border-slate-200 text-2xs uppercase tracking-wider font-semibold">
+                {/* 1. Index */}
+                <th className="py-3 px-2 w-10 text-center">#</th>
+
+                {/* 2. Item Name, Category & Notes */}
+                <th className="py-3 px-3 min-w-[210px]">
+                  <div className="flex items-center gap-1">
+                    <Edit3 className="w-3 h-3 text-emerald-600" />
+                    <span>উপাদান ও ক্যাটাগরি</span>
                   </div>
                 </th>
-                <th className="py-3 px-3 min-w-[120px] text-center">
-                  দর তারতম্য (পার্থক্য)
+
+                {/* 3. Quoted Price & Unit */}
+                <th className="py-3 px-3 min-w-[195px] text-center bg-indigo-50/60 text-indigo-900 border-x border-indigo-100/70">
+                  <div className="flex items-center justify-center gap-1">
+                    <Edit3 className="w-3 h-3 text-indigo-600" />
+                    <span>কোটেশন দর ও একক</span>
+                  </div>
                 </th>
-                <th className="py-3 px-3 min-w-[110px] text-center">
-                  টুরে প্রয়োজন
+
+                {/* 4. Standard Equivalent Price & Unit */}
+                <th className="py-3 px-3 min-w-[155px] text-center bg-slate-100/50 border-r border-slate-200/80">
+                  <div className="flex items-center justify-center gap-1">
+                    <Edit3 className="w-3 h-3 text-slate-500" />
+                    <span>প্রতি মানক একক দর</span>
+                  </div>
                 </th>
-                <th className="py-3 px-3 min-w-[110px] text-right">
-                  বর্তমান মোট
+
+                {/* 5. Current Tour Budget Rate */}
+                <th className="py-3 px-3 min-w-[165px] text-center bg-emerald-50/70 text-emerald-950 border-r border-emerald-100/80">
+                  <div className="flex items-center justify-center gap-1">
+                    <Edit3 className="w-3 h-3 text-emerald-700" />
+                    <span>টুর বাজেট দর</span>
+                  </div>
                 </th>
-                <th className="py-3 px-3 min-w-[110px] text-right bg-emerald-50/40 text-emerald-950">
-                  কোটেশন মোট
+
+                {/* 6. Rate Difference */}
+                <th className="py-3 px-3 min-w-[110px] text-center border-r border-slate-200/60">
+                  দর পার্থক্য
                 </th>
-                <th className="py-3 px-3 min-w-[100px] text-right">
+
+                {/* 7. Tour Required Quantity & Unit */}
+                <th className="py-3 px-3 min-w-[160px] text-center bg-amber-50/50 text-amber-950 border-r border-amber-100/80">
+                  <div className="flex items-center justify-center gap-1">
+                    <Edit3 className="w-3 h-3 text-amber-700" />
+                    <span>টুরে প্রয়োজন</span>
+                  </div>
+                </th>
+
+                {/* 8. Current Total Cost */}
+                <th className="py-3 px-3 min-w-[130px] text-center bg-slate-50 border-r border-slate-200/60">
+                  <div className="flex items-center justify-center gap-1">
+                    <Edit3 className="w-3 h-3 text-slate-500" />
+                    <span>বর্তমান মোট (৳)</span>
+                  </div>
+                </th>
+
+                {/* 9. Quoted Total Cost */}
+                <th className="py-3 px-3 min-w-[130px] text-center bg-indigo-50/40 text-indigo-950 border-r border-indigo-100/60">
+                  <div className="flex items-center justify-center gap-1">
+                    <Edit3 className="w-3 h-3 text-indigo-600" />
+                    <span>কোটেশন মোট (৳)</span>
+                  </div>
+                </th>
+
+                {/* 10. Savings / Cost Variance */}
+                <th className="py-3 px-3 min-w-[110px] text-center bg-emerald-50/40 text-emerald-950">
                   সাশ্রয় / ব্যয়
                 </th>
-                <th className="py-3 px-2 w-10 text-center"></th>
+
+                {/* 11. Actions */}
+                <th className="py-3 px-2 w-16 text-center">অ্যাকশন</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -716,53 +957,74 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
                 </tr>
               ) : (
                 filteredItems.map((item, index) => {
-                  const tourItem = findMatchingTourItem(item);
                   const currentRate = getItemBudgetRate(item);
-                  const diffRate = currentRate > 0 ? item.standardUnitPrice - currentRate : 0;
+                  const standardRate = item.standardUnitPrice;
+                  const diffRate = currentRate > 0 ? standardRate - currentRate : 0;
                   const diffPercent = currentRate > 0 ? (diffRate / currentRate) * 100 : 0;
 
-                  const requiredQty = tourItem ? tourItem.totalQuantity : 0;
-                  const currentCost = requiredQty * currentRate;
-                  const quotedCost = requiredQty * item.standardUnitPrice;
-                  const savings = tourItem ? currentCost - quotedCost : 0;
+                  const requiredQty = getEffectiveQuantity(item);
+                  const requiredUnit = getEffectiveUnit(item);
+                  const currentCost = getEffectiveCurrentCost(item);
+                  const quotedCost = getEffectiveQuotedCost(item);
+                  const savings = currentCost - quotedCost;
 
-                  const isCheaper = currentRate > 0 && item.standardUnitPrice < currentRate;
-                  const isMoreExpensive = currentRate > 0 && item.standardUnitPrice > currentRate;
-                  const isSame = currentRate > 0 && item.standardUnitPrice === currentRate;
+                  const isCheaper = currentRate > 0 && standardRate < currentRate;
+                  const isMoreExpensive = currentRate > 0 && standardRate > currentRate;
+                  const isSame = currentRate > 0 && standardRate === currentRate;
 
                   return (
                     <tr 
                       key={item.id}
-                      className="hover:bg-slate-50/70 transition-colors group"
+                      className="hover:bg-slate-50/80 transition-colors group"
                     >
-                      {/* # Index */}
-                      <td className="py-2.5 px-3 text-center text-slate-400 font-mono text-2xs">
+                      {/* 1. Index */}
+                      <td className="py-2.5 px-2 text-center text-slate-400 font-mono text-2xs">
                         {index + 1}
                       </td>
 
-                      {/* Name & Category */}
+                      {/* 2. Column Edit: Food Item Name, Category & Notes */}
                       <td className="py-2.5 px-3">
-                        <div className="font-semibold text-slate-900 leading-snug">
-                          {item.name}
-                        </div>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <span className={`text-3xs font-medium px-1.5 py-0.2 rounded-md border ${
-                            CATEGORIES[item.category]?.colorClass || 'bg-slate-100 text-slate-700 border-slate-200'
-                          }`}>
-                            {CATEGORIES[item.category]?.nameBn || item.category}
-                          </span>
-                          {item.notes && (
-                            <span className="text-3xs text-slate-400 truncate max-w-[120px]" title={item.notes}>
-                              {item.notes}
-                            </span>
-                          )}
+                        <div className="space-y-1">
+                          <input
+                            type="text"
+                            value={item.name}
+                            onChange={(e) => handleNameChange(item.id, e.target.value)}
+                            className="w-full px-2 py-0.5 font-semibold text-slate-900 bg-transparent hover:bg-white focus:bg-white border border-transparent hover:border-slate-300 focus:border-emerald-500 rounded text-xs transition-all focus:outline-none"
+                            placeholder="উপাদানের নাম..."
+                            title="পণ্যের নাম পরিবর্তন করতে ক্লিক করুন"
+                          />
+                          <div className="flex items-center gap-1.5">
+                            <select
+                              value={item.category}
+                              onChange={(e) => handleCategoryChange(item.id, e.target.value as ItemCategory)}
+                              className={`text-3xs font-medium px-1.5 py-0.5 rounded border bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer ${
+                                CATEGORIES[item.category]?.colorClass || 'bg-slate-50 text-slate-700 border-slate-200'
+                              }`}
+                              title="ক্যাটাগরি পরিবর্তন করুন"
+                            >
+                              {ORDERED_CATEGORY_KEYS.map((k) => (
+                                <option key={k} value={k}>
+                                  {CATEGORIES[k]?.nameBn || k}
+                                </option>
+                              ))}
+                            </select>
+
+                            <input
+                              type="text"
+                              value={item.notes || ''}
+                              onChange={(e) => handleNotesChange(item.id, e.target.value)}
+                              placeholder="+ নোট..."
+                              className="text-3xs text-slate-500 hover:text-slate-800 bg-transparent hover:bg-white focus:bg-white px-1 py-0.5 rounded border border-transparent hover:border-slate-200 focus:border-slate-300 transition-all focus:outline-none w-24 truncate"
+                              title="নোট বা বিবরণ এডিট করুন"
+                            />
+                          </div>
                         </div>
                       </td>
 
-                      {/* Quoted Price & Unit (Inline Editable!) */}
+                      {/* 3. Column Edit: Quoted Price & Unit */}
                       <td className="py-2.5 px-3 bg-indigo-50/30 border-x border-indigo-100/60">
-                        <div className="flex items-center gap-1.5 justify-center">
-                          <span className="text-xs font-semibold text-slate-400">৳</span>
+                        <div className="flex items-center gap-1 justify-center">
+                          <span className="text-xs font-semibold text-indigo-400">৳</span>
                           <input
                             type="number"
                             min="0"
@@ -770,35 +1032,60 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
                             value={item.quotedPrice === 0 ? '' : item.quotedPrice}
                             placeholder="০"
                             onChange={(e) => handleInlinePriceChange(item.id, parseFloat(e.target.value) || 0)}
-                            className="w-20 px-2 py-1 text-center font-mono font-bold text-indigo-950 bg-white border border-indigo-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-600 text-xs shadow-inner"
-                            title="সরাসরি নতুন দর লিখুন"
+                            className="w-16 px-1.5 py-1 text-center font-mono font-bold text-indigo-950 bg-white border border-indigo-200 hover:border-indigo-300 focus:border-indigo-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-xs shadow-inner"
+                            title="কোটেশন দর লিখুন"
                           />
                           <select
                             value={item.quotedUnit}
                             onChange={(e) => handleInlinePriceChange(item.id, item.quotedPrice, e.target.value as QuoteUnitType)}
-                            className="px-1.5 py-1 text-2xs font-medium bg-white border border-slate-200 rounded-lg text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            className="px-1 py-1 text-2xs font-medium bg-white border border-slate-200 rounded-lg text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                            title="কোটেশনের একক বাছাই করুন"
                           >
-                            <option value="কেজি">/ কেজি</option>
-                            <option value="১০০ গ্রাম">/ ১০০ গ্রাম</option>
-                            <option value="২৫০ গ্রাম">/ ২৫০ গ্রাম</option>
-                            <option value="লিটার">/ লিটার</option>
-                            <option value="প্যাকেট">/ প্যাকেট</option>
-                            <option value="বোতল">/ বোতল</option>
-                            <option value="পিস">/ পিস</option>
+                            <option value="কেজি">/কেজি</option>
+                            <option value="১০০ গ্রাম">/১০০ গ্রাম</option>
+                            <option value="২৫০ গ্রাম">/২৫০ গ্রাম</option>
+                            <option value="গ্রাম">/গ্রাম</option>
+                            <option value="লিটার">/লিটার</option>
+                            <option value="প্যাকেট">/প্যাকেট</option>
+                            <option value="বোতল">/বোতল</option>
+                            <option value="পিস">/পিস</option>
                           </select>
                         </div>
                       </td>
 
-                      {/* Equivalent Standard Unit Price */}
-                      <td className="py-2.5 px-3 text-right font-mono font-semibold text-slate-800">
-                        ৳{formatCurrency(item.standardUnitPrice)}
-                        <span className="text-3xs text-slate-400 font-normal ml-0.5">/{item.standardUnit}</span>
+                      {/* 4. Column Edit: Standard Unit Price & Unit */}
+                      <td className="py-2.5 px-3 bg-slate-50/50 border-r border-slate-200/80">
+                        <div className="flex items-center gap-1 justify-center">
+                          <span className="text-xs font-semibold text-slate-400">৳</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="any"
+                            value={item.standardUnitPrice === 0 ? '' : item.standardUnitPrice}
+                            placeholder="০"
+                            onChange={(e) => handleStandardPriceChange(item.id, parseFloat(e.target.value) || 0)}
+                            className="w-16 px-1.5 py-1 text-center font-mono font-bold text-slate-800 bg-white border border-slate-300 hover:border-slate-400 focus:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500/20 text-xs shadow-inner"
+                            title="প্রতি মানক একক দর সরাসরি এডিট করুন"
+                          />
+                          <select
+                            value={item.standardUnit}
+                            onChange={(e) => handleStandardPriceChange(item.id, item.standardUnitPrice, e.target.value as UnitType)}
+                            className="px-1 py-1 text-2xs font-medium bg-white border border-slate-200 rounded-lg text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-500 cursor-pointer"
+                            title="মানক একক বাছাই করুন"
+                          >
+                            <option value="কেজি">/কেজি</option>
+                            <option value="লিটার">/লিটার</option>
+                            <option value="প্যাকেট">/প্যাকেট</option>
+                            <option value="পিস">/পিস</option>
+                            <option value="গ্রাম">/গ্রাম</option>
+                          </select>
+                        </div>
                       </td>
 
-                      {/* Current Tour Budget Rate (Inline Editable!) */}
-                      <td className="py-2.5 px-3 bg-emerald-50/30 border-x border-emerald-100/60">
-                        <div className="flex items-center gap-1.5 justify-center">
-                          <span className="text-xs font-semibold text-slate-400">৳</span>
+                      {/* 5. Column Edit: Current Tour Budget Rate */}
+                      <td className="py-2.5 px-3 bg-emerald-50/30 border-r border-emerald-100/80">
+                        <div className="flex items-center gap-1 justify-center">
+                          <span className="text-xs font-semibold text-emerald-600">৳</span>
                           <input
                             type="number"
                             min="0"
@@ -806,17 +1093,17 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
                             value={currentRate === 0 ? '' : currentRate}
                             placeholder="০"
                             onChange={(e) => handleBudgetPriceChange(item, e.target.value)}
-                            className="w-20 px-2 py-1 text-center font-mono font-bold text-emerald-950 bg-white border border-emerald-300 hover:border-emerald-400 focus:border-emerald-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/30 text-xs shadow-inner"
-                            title="বর্তমান টুর বাজেট দর সরাসরি এডিট করুন"
+                            className="w-16 px-1.5 py-1 text-center font-mono font-bold text-emerald-950 bg-white border border-emerald-300 hover:border-emerald-400 focus:border-emerald-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/30 text-xs shadow-inner"
+                            title="বর্তমান টুর বাজেট দর পরিবর্তন করুন"
                           />
                           <span className="text-3xs text-slate-500 font-medium whitespace-nowrap">
-                            /{tourItem?.unit || item.standardUnit}
+                            /{requiredUnit}
                           </span>
                         </div>
                       </td>
 
-                      {/* Difference (Pill) */}
-                      <td className="py-2.5 px-3 text-center">
+                      {/* 6. Rate Difference (Computed Pill) */}
+                      <td className="py-2.5 px-3 text-center border-r border-slate-200/60">
                         {currentRate > 0 ? (
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-semibold ${
                             isCheaper
@@ -831,64 +1118,104 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
                             <span>
                               {diffRate > 0 ? '+' : ''}{formatCurrency(diffRate)} ৳
                             </span>
-                            <span className="text-3xs font-normal">
-                              ({diffPercent > 0 ? '+' : ''}{diffPercent.toFixed(0)}%)
-                            </span>
                           </span>
                         ) : (
                           <span className="text-slate-400 text-3xs">-</span>
                         )}
                       </td>
 
-                      {/* Tour Required Amount */}
-                      <td className="py-2.5 px-3 text-center font-mono">
-                        {tourItem ? (
-                          <span className="font-semibold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md text-2xs">
-                            {formatNumberBn(tourItem.totalQuantity)} {tourItem.unit}
-                          </span>
-                        ) : (
-                          <span className="text-slate-400 text-3xs">টুরে নেই</span>
-                        )}
+                      {/* 7. Column Edit: Tour Required Quantity & Unit */}
+                      <td className="py-2.5 px-3 bg-amber-50/30 border-r border-amber-100/80">
+                        <div className="flex items-center gap-1 justify-center">
+                          <input
+                            type="number"
+                            min="0"
+                            step="any"
+                            value={requiredQty === 0 ? '' : requiredQty}
+                            placeholder="০"
+                            onChange={(e) => handleRequiredQtyChange(item, e.target.value)}
+                            className="w-16 px-1.5 py-1 text-center font-mono font-bold text-amber-950 bg-white border border-amber-300 hover:border-amber-400 focus:border-amber-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/30 text-xs shadow-inner"
+                            title="টুরের প্রয়োজনীয় পরিমাণ এডিট করুন"
+                          />
+                          <select
+                            value={requiredUnit}
+                            onChange={(e) => handleRequiredUnitChange(item.id, e.target.value as UnitType)}
+                            className="px-1 py-1 text-2xs font-medium bg-white border border-amber-200 rounded-lg text-amber-900 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
+                            title="একক বাছাই করুন"
+                          >
+                            <option value="কেজি">কেজি</option>
+                            <option value="গ্রাম">গ্রাম</option>
+                            <option value="লিটার">লিটার</option>
+                            <option value="প্যাকেট">প্যাকেট</option>
+                            <option value="পিস">পিস</option>
+                            <option value="বোতল">বোতল</option>
+                          </select>
+                        </div>
                       </td>
 
-                      {/* Current Total Cost */}
-                      <td className="py-2.5 px-3 text-right font-mono text-slate-700">
-                        {tourItem && currentCost > 0 ? (
-                          `৳${formatCurrency(currentCost)}`
-                        ) : (
-                          <span className="text-slate-300">-</span>
-                        )}
+                      {/* 8. Column Edit: Current Total Cost */}
+                      <td className="py-2.5 px-2 bg-slate-50/60 border-r border-slate-200/60">
+                        <div className="flex items-center gap-0.5 justify-center">
+                          <span className="text-2xs font-semibold text-slate-400">৳</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="any"
+                            value={currentCost === 0 ? '' : currentCost}
+                            placeholder="০"
+                            onChange={(e) => handleCurrentTotalChange(item, e.target.value)}
+                            className="w-20 px-1 py-1 text-right font-mono font-semibold text-slate-800 bg-white border border-slate-200 hover:border-slate-300 focus:border-slate-500 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400 text-xs shadow-inner"
+                            title="বর্তমান মোট খরচ এডিট করতে পারেন"
+                          />
+                        </div>
                       </td>
 
-                      {/* Quoted Total Cost */}
-                      <td className="py-2.5 px-3 text-right font-mono font-semibold bg-emerald-50/40 text-emerald-950">
-                        {tourItem && quotedCost > 0 ? (
-                          `৳${formatCurrency(quotedCost)}`
-                        ) : (
-                          <span className="text-slate-300">-</span>
-                        )}
+                      {/* 9. Column Edit: Quoted Total Cost */}
+                      <td className="py-2.5 px-2 bg-indigo-50/30 border-r border-indigo-100/60">
+                        <div className="flex items-center gap-0.5 justify-center">
+                          <span className="text-2xs font-semibold text-indigo-400">৳</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="any"
+                            value={quotedCost === 0 ? '' : quotedCost}
+                            placeholder="০"
+                            onChange={(e) => handleQuotedTotalChange(item, e.target.value)}
+                            className="w-20 px-1 py-1 text-right font-mono font-bold text-indigo-950 bg-white border border-indigo-200 hover:border-indigo-300 focus:border-indigo-600 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-400 text-xs shadow-inner"
+                            title="কোটেশন মোট খরচ এডিট করতে পারেন"
+                          />
+                        </div>
                       </td>
 
-                      {/* Savings or Overrun */}
+                      {/* 10. Savings / Cost Variance (Pill) */}
                       <td className="py-2.5 px-3 text-right font-mono font-bold">
-                        {tourItem && savings !== 0 ? (
-                          <span className={savings > 0 ? 'text-emerald-700' : 'text-rose-600'}>
-                            {savings > 0 ? `+৳${formatCurrency(savings)}` : `-৳${formatCurrency(Math.abs(savings))}`}
+                        {currentCost > 0 && quotedCost > 0 ? (
+                          <span className={savings >= 0 ? 'text-emerald-700' : 'text-rose-600'}>
+                            {savings >= 0 ? `+৳${formatCurrency(savings)}` : `-৳${formatCurrency(Math.abs(savings))}`}
                           </span>
                         ) : (
-                          <span className="text-slate-300">-</span>
+                          <span className="text-slate-300 text-3xs">-</span>
                         )}
                       </td>
 
-                      {/* Action: Delete */}
+                      {/* 11. Actions: Full Edit Modal & Delete */}
                       <td className="py-2.5 px-2 text-center">
-                        <button
-                          onClick={() => handleDeleteItem(item.id)}
-                          className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-rose-600 rounded-md transition-opacity"
-                          title="এই আইটেমটি তালিকা থেকে মুছুন"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => setEditingItemModal(item)}
+                            className="p-1 text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-md transition-colors"
+                            title="সম্পূর্ণ বিবরণী সম্পাদনা করুন"
+                          >
+                            <Settings2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteItem(item.id)}
+                            className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
+                            title="এই আইটেমটি মুছুন"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -900,12 +1227,12 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
             <tfoot className="bg-slate-900 text-white font-semibold text-xs border-t-2 border-slate-700">
               <tr>
                 <td colSpan={7} className="py-3 px-4 text-right">
-                  টুরে সরাসরি অন্তর্ভুক্ত {metrics.matchedTourItems}টি পণ্যের মোট খরচ তুলনা:
+                  মোট হিসাবকৃত {metrics.matchedTourItems}টি খাদ্য উপাদানের সামগ্রিক মোট খরচ:
                 </td>
-                <td className="py-3 px-3 text-right font-mono text-slate-300">
+                <td className="py-3 px-2 text-right font-mono text-slate-300">
                   ৳{formatCurrency(metrics.totalCurrentCost)}
                 </td>
-                <td className="py-3 px-3 text-right font-mono text-emerald-300 bg-slate-800/80">
+                <td className="py-3 px-2 text-right font-mono text-indigo-300 bg-slate-800/80">
                   ৳{formatCurrency(metrics.totalQuotedCost)}
                 </td>
                 <td className="py-3 px-3 text-right font-mono font-bold text-emerald-400">
@@ -918,22 +1245,268 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
         </div>
       </div>
 
-      {/* Info Card explaining how the comparison works */}
+      {/* Info Card explaining how all editable columns work */}
       <div className="bg-amber-50/70 border border-amber-200/80 p-4 rounded-xl flex items-start gap-3 text-amber-900 text-xs">
         <HelpCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
         <div className="space-y-1">
           <div className="font-bold text-amber-950">
-            কীভাবে কোটেশন দর কাজ করে?
+            প্রতিটি কলাম সম্পাদনা গাইড:
           </div>
           <p className="text-amber-800 leading-relaxed">
-            ১. ইনপুট বক্সে যে দর দেওয়া আছে তা ইউজারের সরাসরি বাজার তালিকা অনুসারে প্রতি ১০০ গ্রাম বা প্রতি কেজি হিসেবে সংরক্ষিত। 
+            ১. <strong>উপাদান ও ক্যাটাগরি:</strong> সরাসরি নাম লিখুন এবং ড্রপডাউন থেকে ৮টি মূল ক্যাটাগরির যেকোনোটি নির্বাচন করুন।
             <br />
-            ২. আপনি যেকোনো পণ্যের একক দর পরিবর্তন করতে পারেন বা একক (কেজি, ১০০ গ্রাম, লিটার, ইত্যাদি) পরিবর্তন করতে পারেন।
+            ২. <strong>কোটেশন ও মানক দর:</strong> ১০০ গ্রাম বা কেজির যেকোনো দর বসান, অপরটি স্বয়ংক্রিয়ভাবে সিঙ্ক হয়ে যাবে।
             <br />
-            ৩. <strong>&apos;টুর বাজেটে দর প্রয়োগ করুন&apos;</strong> বাটনে ক্লিক করলে এই কোটেশনের রেটগুলো সরাসরি অ্যাপের মূল ৬ বেলার খাবার বাজেটে ও বাজার সামারিতে আপডেট হয়ে যাবে।
+            ৩. <strong>টুর বাজেট দর:</strong> বাজেট দর পরিবর্তন করলে তা সরাসরি মূল ৬ বেলার মেনু ও বাজার সামারিতে আপডেট হয়।
+            <br />
+            ৪. <strong>টুরে প্রয়োজন ও মোট:</strong> প্রয়োজনীয় পরিমাণ (যেমন: ২০ কেজি) পরিবর্তন করলে মোট খরচ ও সাশ্রয় রিয়েল-টাইমে আপডেট হয়।
+            <br />
+            ৫. ডানপাশের <strong>সেটিংস (⚙️) আইকনে</strong> ক্লিক করে যেকোনো আইটেম পপআপ উইন্ডোতেও বিস্তারিতভাবে সম্পাদনা করতে পারেন।
           </p>
         </div>
       </div>
+
+      {/* Modal: Edit Row Item Completely (All fields in one clean dialog) */}
+      {editingItemModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 border border-slate-200 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <span className="p-2 bg-emerald-50 rounded-xl text-emerald-700">
+                  <Edit3 className="w-4 h-4" />
+                </span>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">
+                    উপাদান বিস্তারিত সম্পাদনা
+                  </h3>
+                  <p className="text-2xs text-slate-500">
+                    {editingItemModal.name} - এর সকল কলাম ও তথ্য আপডেট করুন
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setEditingItemModal(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3.5 text-xs">
+              {/* Name */}
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">
+                  উপাদানের নাম
+                </label>
+                <input
+                  type="text"
+                  value={editingItemModal.name}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setEditingItemModal((prev) => prev ? { ...prev, name: val } : null);
+                    handleNameChange(editingItemModal.id, val);
+                  }}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-medium"
+                />
+              </div>
+
+              {/* Category & Notes */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">
+                    ক্যাটাগরি
+                  </label>
+                  <select
+                    value={editingItemModal.category}
+                    onChange={(e) => {
+                      const val = e.target.value as ItemCategory;
+                      setEditingItemModal((prev) => prev ? { ...prev, category: val } : null);
+                      handleCategoryChange(editingItemModal.id, val);
+                    }}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white"
+                  >
+                    {ORDERED_CATEGORY_KEYS.map((k) => (
+                      <option key={k} value={k}>
+                        {CATEGORIES[k]?.nameBn || k}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">
+                    নোট বা বিবরণ
+                  </label>
+                  <input
+                    type="text"
+                    value={editingItemModal.notes || ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setEditingItemModal((prev) => prev ? { ...prev, notes: val } : null);
+                      handleNotesChange(editingItemModal.id, val);
+                    }}
+                    placeholder="যেমন: ফ্রেশ মিনিকেট..."
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  />
+                </div>
+              </div>
+
+              {/* Quoted Price & Unit */}
+              <div className="grid grid-cols-2 gap-3 p-3 bg-indigo-50/50 rounded-xl border border-indigo-100">
+                <div>
+                  <label className="block text-indigo-950 font-semibold mb-1">
+                    প্রাপ্ত কোটেশন দর (টাকা)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={editingItemModal.quotedPrice}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value) || 0;
+                      setEditingItemModal((prev) => prev ? { ...prev, quotedPrice: val } : null);
+                      handleInlinePriceChange(editingItemModal.id, val, editingItemModal.quotedUnit);
+                    }}
+                    className="w-full px-3 py-2 border border-indigo-200 rounded-xl text-indigo-950 font-mono font-bold bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-indigo-950 font-semibold mb-1">
+                    কোটেশন একক
+                  </label>
+                  <select
+                    value={editingItemModal.quotedUnit}
+                    onChange={(e) => {
+                      const val = e.target.value as QuoteUnitType;
+                      setEditingItemModal((prev) => prev ? { ...prev, quotedUnit: val } : null);
+                      handleInlinePriceChange(editingItemModal.id, editingItemModal.quotedPrice, val);
+                    }}
+                    className="w-full px-3 py-2 border border-indigo-200 rounded-xl text-slate-800 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  >
+                    <option value="কেজি">প্রতি কেজি</option>
+                    <option value="১০০ গ্রাম">প্রতি ১০০ গ্রাম (শ)</option>
+                    <option value="২৫০ গ্রাম">প্রতি ২৫০ গ্রাম</option>
+                    <option value="গ্রাম">প্রতি গ্রাম</option>
+                    <option value="লিটার">প্রতি লিটার</option>
+                    <option value="প্যাকেট">প্রতি প্যাকেট</option>
+                    <option value="বোতল">প্রতি বোতল</option>
+                    <option value="পিস">প্রতি পিস</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Standard Price & Budget Price */}
+              <div className="grid grid-cols-2 gap-3 p-3 bg-emerald-50/50 rounded-xl border border-emerald-100">
+                <div>
+                  <label className="block text-emerald-950 font-semibold mb-1">
+                    মানক একক দর (টাকা/কেজি বা পিস)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={editingItemModal.standardUnitPrice}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value) || 0;
+                      setEditingItemModal((prev) => prev ? { ...prev, standardUnitPrice: val } : null);
+                      handleStandardPriceChange(editingItemModal.id, val);
+                    }}
+                    className="w-full px-3 py-2 border border-emerald-200 rounded-xl text-emerald-950 font-mono font-bold bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-emerald-950 font-semibold mb-1">
+                    বর্তমান টুর বাজেট দর (টাকা)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={getItemBudgetRate(editingItemModal)}
+                    onChange={(e) => {
+                      handleBudgetPriceChange(editingItemModal, e.target.value);
+                    }}
+                    className="w-full px-3 py-2 border border-emerald-200 rounded-xl text-emerald-950 font-mono font-bold bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  />
+                </div>
+              </div>
+
+              {/* Required Quantity & Unit */}
+              <div className="grid grid-cols-2 gap-3 p-3 bg-amber-50/50 rounded-xl border border-amber-100">
+                <div>
+                  <label className="block text-amber-950 font-semibold mb-1">
+                    টুরে প্রয়োজন (পরিমাণ)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={getEffectiveQuantity(editingItemModal)}
+                    onChange={(e) => {
+                      handleRequiredQtyChange(editingItemModal, e.target.value);
+                    }}
+                    className="w-full px-3 py-2 border border-amber-200 rounded-xl text-amber-950 font-mono font-bold bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-amber-950 font-semibold mb-1">
+                    প্রয়োজনীয় একক
+                  </label>
+                  <select
+                    value={getEffectiveUnit(editingItemModal)}
+                    onChange={(e) => {
+                      const val = e.target.value as UnitType;
+                      handleRequiredUnitChange(editingItemModal.id, val);
+                    }}
+                    className="w-full px-3 py-2 border border-amber-200 rounded-xl text-slate-800 bg-white focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  >
+                    <option value="কেজি">কেজি</option>
+                    <option value="গ্রাম">গ্রাম</option>
+                    <option value="লিটার">লিটার</option>
+                    <option value="প্যাকেট">প্যাকেট</option>
+                    <option value="পিস">পিস</option>
+                    <option value="বোতল">বোতল</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Totals Preview */}
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 grid grid-cols-3 gap-2 text-center">
+                <div>
+                  <div className="text-3xs text-slate-500">বর্তমান মোট</div>
+                  <div className="font-mono font-bold text-slate-800 mt-0.5">
+                    ৳{formatCurrency(getEffectiveCurrentCost(editingItemModal))}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-3xs text-slate-500">কোটেশন মোট</div>
+                  <div className="font-mono font-bold text-indigo-950 mt-0.5">
+                    ৳{formatCurrency(getEffectiveQuotedCost(editingItemModal))}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-3xs text-slate-500">সাশ্রয়</div>
+                  <div className="font-mono font-bold text-emerald-700 mt-0.5">
+                    ৳{formatCurrency(getEffectiveCurrentCost(editingItemModal) - getEffectiveQuotedCost(editingItemModal))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end pt-3 border-t border-slate-100">
+              <button
+                onClick={() => setEditingItemModal(null)}
+                className="px-5 py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-all shadow-xs cursor-pointer"
+              >
+                সম্পাদনা সম্পন্ন
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal: Apply Rates to Master Tour Budget */}
       {isApplyModalOpen && (
@@ -1023,7 +1596,7 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
                   placeholder="যেমন: পোলাও চাল, কাজু বাদাম, শুকনা মরিচ..."
                   value={newItemName}
                   onChange={(e) => setNewItemName(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-medium"
                 />
               </div>
 
@@ -1047,7 +1620,7 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
 
                 <div>
                   <label className="block text-slate-700 font-semibold mb-1">
-                    দর একক
+                    কোটেশন একক
                   </label>
                   <select
                     value={newItemUnit}
@@ -1065,23 +1638,58 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">
+                    কোটেশন দর (টাকা) *
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">৳</span>
+                    <input
+                      type="number"
+                      step="any"
+                      required
+                      min="0"
+                      placeholder="যেমন: ১২০"
+                      value={newItemPrice}
+                      onChange={(e) => setNewItemPrice(e.target.value)}
+                      className="w-full pl-8 pr-3 py-2 border border-slate-300 rounded-xl font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">
+                    বর্তমান বাজেট দর (ঐচ্ছিক)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">৳</span>
+                    <input
+                      type="number"
+                      step="any"
+                      min="0"
+                      placeholder="যেমন: ১৩৫"
+                      value={newItemBudgetRate}
+                      onChange={(e) => setNewItemBudgetRate(e.target.value)}
+                      className="w-full pl-8 pr-3 py-2 border border-slate-300 rounded-xl font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-slate-700 font-semibold mb-1">
-                  কোটেশন দর (টাকা) *
+                  টুরের জন্য মোট প্রয়োজন (ঐচ্ছিক)
                 </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">৳</span>
-                  <input
-                    type="number"
-                    step="any"
-                    required
-                    min="0"
-                    placeholder="যেমন: ১২০"
-                    value={newItemPrice}
-                    onChange={(e) => setNewItemPrice(e.target.value)}
-                    className="w-full pl-8 pr-3 py-2 border border-slate-300 rounded-xl font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                  />
-                </div>
+                <input
+                  type="number"
+                  step="any"
+                  min="0"
+                  placeholder="যেমন: ২৫"
+                  value={newItemRequiredQty}
+                  onChange={(e) => setNewItemRequiredQty(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                />
               </div>
 
               <div>
