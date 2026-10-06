@@ -25,9 +25,64 @@ import {
   Sparkles
 } from 'lucide-react';
 
+const BASELINE_BUDGET_RATES: Record<string, number> = {
+  rice_white: 65,
+  polao_rice: 140,
+  lentil_chola: 130,
+  basmati_rice: 300,
+  flour: 60,
+  lentil_mosur: 135,
+  lentil_mug: 160,
+  toast_biscuit: 160,
+  ginger: 240,
+  dry_chilli_whole: 450,
+  dry_chilli_powder: 420,
+  turmeric: 320,
+  cumin: 900,
+  salt: 40,
+  white_mustard: 180,
+  cardamom: 4200,
+  cinnamon: 600,
+  clove: 1500,
+  bay_leaf: 300,
+  coriander: 320,
+  black_pepper: 1600,
+  mace_jayatri: 3200,
+  nutmeg_jaiphal: 1300,
+  kabab_chini: 3000,
+  star_anise: 1100,
+  shahi_chilli: 1500,
+  fennel_mouri: 380,
+  radhuni_masala: 380,
+  tasting_salt: 1400,
+  bit_salt: 100,
+  fish_masala: 65,
+  roast_masala: 60,
+  soybean_oil: 185,
+  mustard_oil: 280,
+  ghee: 1400,
+  butter_oil: 600,
+  powder_milk: 880,
+  sugar: 130,
+  peanuts: 200,
+  cashew: 1500,
+  almond: 1400,
+  alu_bokhara: 1100,
+  kheer_mix: 70,
+  morobba: 350,
+  tomato_sauce: 200,
+  soy_sauce: 220,
+  vinegar: 70,
+  orange_essence: 60,
+  zafran_scent: 85,
+  food_color: 50,
+};
+
 interface ComparisonViewProps {
   aggregatedItems: AggregatedMasterItem[];
   studentCount: number;
+  priceOverrides?: Record<string, number>;
+  onUpdateBudgetPrice?: (canonicalKey: string, newPrice: number) => void;
   onApplyRatesToBudget: (rates: Record<string, number>) => void;
   savedComparisonItems?: ComparisonQuoteItem[];
   onSaveComparisonItems?: (items: ComparisonQuoteItem[]) => void;
@@ -36,6 +91,8 @@ interface ComparisonViewProps {
 export const ComparisonView: React.FC<ComparisonViewProps> = ({
   aggregatedItems,
   studentCount,
+  priceOverrides = {},
+  onUpdateBudgetPrice,
   onApplyRatesToBudget,
   savedComparisonItems,
   onSaveComparisonItems,
@@ -47,6 +104,39 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
     }
     return INITIAL_COMPARISON_ITEMS;
   });
+
+  // Local fallback state for budget price overrides if needed
+  const [localBudgetPrices, setLocalBudgetPrices] = useState<Record<string, number>>({});
+
+  // Helper to get effective budget rate for an item
+  const getItemBudgetRate = (quoteItem: ComparisonQuoteItem): number => {
+    if (localBudgetPrices[quoteItem.canonicalKey] !== undefined) {
+      return localBudgetPrices[quoteItem.canonicalKey];
+    }
+    if (priceOverrides && priceOverrides[quoteItem.canonicalKey] !== undefined) {
+      return priceOverrides[quoteItem.canonicalKey];
+    }
+    const tourItem = findMatchingTourItem(quoteItem);
+    if (tourItem && tourItem.unitPrice > 0) {
+      return tourItem.unitPrice;
+    }
+    return BASELINE_BUDGET_RATES[quoteItem.canonicalKey] || 0;
+  };
+
+  // Handler: Update Current Tour Budget Rate for an item
+  const handleBudgetPriceChange = (quoteItem: ComparisonQuoteItem, valStr: string) => {
+    const val = parseFloat(valStr);
+    const validRate = isNaN(val) ? 0 : Math.max(0, val);
+
+    setLocalBudgetPrices((prev) => ({
+      ...prev,
+      [quoteItem.canonicalKey]: validRate,
+    }));
+
+    if (onUpdateBudgetPrice) {
+      onUpdateBudgetPrice(quoteItem.canonicalKey, validRate);
+    }
+  };
 
   // Filters & Search
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -198,12 +288,12 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
 
     items.forEach((item) => {
       const tourItem = findMatchingTourItem(item);
+      const currentRate = getItemBudgetRate(item);
+      const quotedRate = item.standardUnitPrice;
+
       if (tourItem) {
         matchedTourItems++;
         const requiredQty = tourItem.totalQuantity;
-        const currentRate = tourItem.unitPrice;
-        const quotedRate = item.standardUnitPrice;
-
         const currentCost = requiredQty * currentRate;
         const quotedCost = requiredQty * quotedRate;
 
@@ -219,7 +309,11 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
         }
       } else {
         // Compare with baseline default if available
-        if (item.standardUnitPrice > 0) {
+        if (currentRate > 0) {
+          if (quotedRate < currentRate) cheaperCount++;
+          else if (quotedRate > currentRate) expensiveCount++;
+          else sameCount++;
+        } else {
           sameCount++;
         }
       }
@@ -239,7 +333,7 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
       expensiveCount,
       sameCount,
     };
-  }, [items, tourItemsMap]);
+  }, [items, tourItemsMap, priceOverrides, localBudgetPrices]);
 
   // Filtered Items
   const filteredItems = useMemo(() => {
@@ -249,19 +343,20 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
         (item.notes && item.notes.toLowerCase().includes(searchQuery.toLowerCase()));
 
       const tourItem = findMatchingTourItem(item);
+      const currentRate = getItemBudgetRate(item);
       let matchesStatus = true;
 
       if (statusFilter === 'savings') {
-        matchesStatus = tourItem ? item.standardUnitPrice < tourItem.unitPrice : false;
+        matchesStatus = currentRate > 0 ? item.standardUnitPrice < currentRate : false;
       } else if (statusFilter === 'extra') {
-        matchesStatus = tourItem ? item.standardUnitPrice > tourItem.unitPrice : false;
+        matchesStatus = currentRate > 0 ? item.standardUnitPrice > currentRate : false;
       } else if (statusFilter === 'tour_needed') {
         matchesStatus = !!tourItem;
       }
 
       return matchesCategory && matchesSearch && matchesStatus;
     });
-  }, [items, selectedCategory, searchQuery, statusFilter, tourItemsMap]);
+  }, [items, selectedCategory, searchQuery, statusFilter, tourItemsMap, priceOverrides, localBudgetPrices]);
 
   // Export to CSV
   const handleExportCSV = () => {
@@ -282,7 +377,7 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
 
     const rows = filteredItems.map((item, idx) => {
       const tourItem = findMatchingTourItem(item);
-      const currentRate = tourItem ? tourItem.unitPrice : 0;
+      const currentRate = getItemBudgetRate(item);
       const diff = currentRate > 0 ? item.standardUnitPrice - currentRate : 0;
       const qty = tourItem ? `${tourItem.totalQuantity} ${tourItem.unit}` : 'টুরে নেই';
       const curCost = tourItem ? tourItem.totalQuantity * currentRate : 0;
@@ -587,8 +682,11 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
                 <th className="py-3 px-3 min-w-[120px] text-right">
                   প্রতি মানক একক দর
                 </th>
-                <th className="py-3 px-3 min-w-[120px] text-right">
-                  বর্তমান টুর বাজেট দর
+                <th className="py-3 px-3 min-w-[200px] text-center bg-emerald-50/70 text-emerald-950 border-x border-emerald-100/80">
+                  <div className="flex items-center justify-center gap-1.5">
+                    <Edit3 className="w-3.5 h-3.5 text-emerald-700" />
+                    <span>বর্তমান টুর বাজেট দর (এডিটেবল)</span>
+                  </div>
                 </th>
                 <th className="py-3 px-3 min-w-[120px] text-center">
                   দর তারতম্য (পার্থক্য)
@@ -619,7 +717,7 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
               ) : (
                 filteredItems.map((item, index) => {
                   const tourItem = findMatchingTourItem(item);
-                  const currentRate = tourItem ? tourItem.unitPrice : 0;
+                  const currentRate = getItemBudgetRate(item);
                   const diffRate = currentRate > 0 ? item.standardUnitPrice - currentRate : 0;
                   const diffPercent = currentRate > 0 ? (diffRate / currentRate) * 100 : 0;
 
@@ -697,16 +795,24 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
                         <span className="text-3xs text-slate-400 font-normal ml-0.5">/{item.standardUnit}</span>
                       </td>
 
-                      {/* Current Tour Budget Rate */}
-                      <td className="py-2.5 px-3 text-right font-mono">
-                        {currentRate > 0 ? (
-                          <>
-                            <span className="font-semibold text-slate-700">৳{formatCurrency(currentRate)}</span>
-                            <span className="text-3xs text-slate-400 ml-0.5">/{tourItem?.unit}</span>
-                          </>
-                        ) : (
-                          <span className="text-slate-400 text-2xs italic">নির্ধারিত নেই</span>
-                        )}
+                      {/* Current Tour Budget Rate (Inline Editable!) */}
+                      <td className="py-2.5 px-3 bg-emerald-50/30 border-x border-emerald-100/60">
+                        <div className="flex items-center gap-1.5 justify-center">
+                          <span className="text-xs font-semibold text-slate-400">৳</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="any"
+                            value={currentRate === 0 ? '' : currentRate}
+                            placeholder="০"
+                            onChange={(e) => handleBudgetPriceChange(item, e.target.value)}
+                            className="w-20 px-2 py-1 text-center font-mono font-bold text-emerald-950 bg-white border border-emerald-300 hover:border-emerald-400 focus:border-emerald-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/30 text-xs shadow-inner"
+                            title="বর্তমান টুর বাজেট দর সরাসরি এডিট করুন"
+                          />
+                          <span className="text-3xs text-slate-500 font-medium whitespace-nowrap">
+                            /{tourItem?.unit || item.standardUnit}
+                          </span>
+                        </div>
                       </td>
 
                       {/* Difference (Pill) */}

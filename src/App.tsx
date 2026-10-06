@@ -565,6 +565,8 @@ export default function App() {
           <ComparisonView
             aggregatedItems={aggregatedItems}
             studentCount={studentCount}
+            priceOverrides={priceOverrides}
+            onUpdateBudgetPrice={handleUpdateMasterPrice}
             onApplyRatesToBudget={handleApplyComparisonRatesToBudget}
             savedComparisonItems={savedComparisonItems}
             onSaveComparisonItems={handleSaveComparisonItems}
